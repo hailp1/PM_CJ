@@ -268,16 +268,15 @@ export default function WBSView() {
       worksheet.getCell('A7').value = `Exported Date: ${new Date().toLocaleDateString()}  |  Project Manager: ${activeProject.pm}  |  Sponsor: ${activeProject.sponsor}`;
       worksheet.getCell('A7').font = { name: 'Segoe UI', size: 9, color: { argb: 'FF7F7F7F' } };
 
-      worksheet.columns = [
-        { header: 'WBS Element / Title', key: 'title', width: 45 },
-        { header: 'Description', key: 'description', width: 35 },
-        { header: 'Owner (PIC)', key: 'pic', width: 22 },
-        { header: 'Start Date', key: 'startDate', width: 14 },
-        { header: 'Due Date', key: 'dueDate', width: 14 },
-        { header: 'Progress', key: 'progress', width: 12 },
-        { header: 'Status', key: 'status', width: 16 },
-        { header: 'RACI', key: 'raci', width: 10 }
-      ];
+      worksheet.getColumn(1).width = 45;
+      worksheet.getColumn(2).width = 35;
+      worksheet.getColumn(3).width = 22;
+      worksheet.getColumn(4).width = 22; // Accountable
+      worksheet.getColumn(5).width = 14;
+      worksheet.getColumn(6).width = 14;
+      worksheet.getColumn(7).width = 12;
+      worksheet.getColumn(8).width = 16;
+      worksheet.getColumn(9).width = 10;
 
       const headerRow = worksheet.getRow(9);
       headerRow.height = 26;
@@ -285,6 +284,7 @@ export default function WBSView() {
         language === 'VI' ? 'Tên công việc / Phân cấp' : (language === 'KO' ? '작업명 / 계층구조' : 'WBS Element / Title'),
         language === 'VI' ? 'Mô tả chi tiết' : (language === 'KO' ? '작업 설명' : 'Description'),
         language === 'VI' ? 'Người phụ trách (PIC)' : (language === 'KO' ? '담당자' : 'Owner (PIC)'),
+        language === 'VI' ? 'Người duyệt (Accountable)' : (language === 'KO' ? '승인자 (Accountable)' : 'Accountable'),
         language === 'VI' ? 'Ngày bắt đầu' : (language === 'KO' ? '시작일' : 'Start Date'),
         language === 'VI' ? 'Ngày hạn chót' : (language === 'KO' ? '기한일' : 'Due Date'),
         language === 'VI' ? 'Tiến độ' : (language === 'KO' ? '진척도' : 'Progress'),
@@ -324,6 +324,7 @@ export default function WBSView() {
           '   '.repeat(depth) + task.title,
           task.description,
           task.picName,
+          getAccountableName(task),
           task.startDate,
           task.dueDate,
           task.progress / 100,
@@ -337,13 +338,14 @@ export default function WBSView() {
         row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
         row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
         row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
-        row.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(4).alignment = { horizontal: 'left', vertical: 'middle' };
         row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
         row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(9).alignment = { horizontal: 'center', vertical: 'middle' };
 
-        row.getCell(6).numFmt = '0%';
+        row.getCell(7).numFmt = '0%';
 
         row.eachCell((cell) => {
           cell.border = {
@@ -361,7 +363,7 @@ export default function WBSView() {
           });
         }
 
-        const statusCell = row.getCell(7);
+        const statusCell = row.getCell(8);
         if (task.status === 'Completed') {
           statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2F0D9' } };
           statusCell.font = { color: { argb: 'FF385723' }, bold: true, name: 'Segoe UI', size: 9.5 };
@@ -373,7 +375,7 @@ export default function WBSView() {
           statusCell.font = { color: { argb: 'FFC65911' }, bold: true, name: 'Segoe UI', size: 9.5 };
         }
 
-        const raciCell = row.getCell(8);
+        const raciCell = row.getCell(9);
         raciCell.font = { color: { argb: 'FFE21E26' }, bold: true, name: 'Segoe UI', size: 9.5 };
         
         const children = projectTasks.filter(t => t.parentId === task.id);
@@ -393,6 +395,18 @@ export default function WBSView() {
   };
 
   const isReadOnly = currentUser.role === 'Viewer';
+
+  const getAccountableName = (task: Task): string => {
+    if (task.raci === 'A') return task.picName;
+    if (task.parentId) {
+      const parent = tasks.find(t => t.id === task.parentId);
+      if (parent) {
+        if (parent.raci === 'A') return parent.picName;
+        return getAccountableName(parent);
+      }
+    }
+    return activeProject.pm;
+  };
 
   // Recursive Tree Node component
   const TreeNode = ({ task, depth = 0 }: { task: Task; depth: number }) => {
@@ -470,6 +484,9 @@ export default function WBSView() {
               <Users className="h-3.5 w-3.5 text-gray-400" />
               <span className="font-bold text-cj-gray-700">{task.picName}</span>
             </div>
+          </td>
+          <td className="px-3 py-3.5 text-xs">
+            <span className="font-bold text-cj-gray-700">{getAccountableName(task)}</span>
           </td>
           <td className="px-3 py-3.5 text-xs text-gray-500 font-medium">
             {task.startDate} ~ {task.dueDate}
@@ -598,14 +615,18 @@ export default function WBSView() {
 
           <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-500">
             <div>
-              <span className="text-gray-400 block font-semibold text-[8px]">{language === 'VI' ? 'PHỤ TRÁCH' : 'PIC'}</span>
+              <span className="text-gray-400 block font-semibold text-[8px]">{language === 'VI' ? 'PHỤ TRÁCH (PIC)' : 'PIC'}</span>
               <span className="font-bold text-cj-gray-700">{task.picName}</span>
             </div>
             <div>
-              <span className="text-gray-400 block font-semibold text-[8px]">{language === 'VI' ? 'THỜI HẠN' : 'DUE DATE'}</span>
-              <span className="font-medium text-cj-gray-700">{task.dueDate}</span>
+              <span className="text-gray-400 block font-semibold text-[8px]">{language === 'VI' ? 'NGƯỜI DUYỆT' : 'ACCOUNTABLE'}</span>
+              <span className="font-bold text-cj-gray-700">{getAccountableName(task)}</span>
             </div>
-            <div className="col-span-2 flex justify-between items-center bg-cj-gray-100/50 px-2 py-1 rounded border border-cj-gray-200/40">
+            <div className="col-span-2">
+              <span className="text-gray-400 block font-semibold text-[8px]">{language === 'VI' ? 'THỜI HẠN' : 'DUE DATE'}</span>
+              <span className="font-medium text-cj-gray-700">{task.startDate} ~ {task.dueDate}</span>
+            </div>
+            <div className="col-span-2 flex justify-between items-center bg-cj-gray-100/50 px-2 py-1.5 rounded border border-cj-gray-200/40">
               <span className="text-gray-400 font-bold text-[8px]">{language === 'VI' ? 'TIẾN ĐỘ' : 'PROGRESS'}</span>
               <span className="font-extrabold text-cj-blue">{task.progress}%</span>
             </div>
@@ -922,6 +943,7 @@ export default function WBSView() {
               <th scope="col" className="py-3 pl-6 pr-3 text-left">{language === 'VI' ? 'Phân cấp WBS / Tên công việc' : (language === 'KO' ? '계층 구조 / 작업명' : 'Hierarchy element / Title')}</th>
               <th scope="col" className="px-3 py-3 text-left">{language === 'VI' ? 'Mô tả' : (language === 'KO' ? '설명' : 'Description')}</th>
               <th scope="col" className="px-3 py-3 text-left">{language === 'VI' ? 'Phụ trách (PIC)' : (language === 'KO' ? '담당자' : 'Owner (PIC)')}</th>
+              <th scope="col" className="px-3 py-3 text-left">{language === 'VI' ? 'Người duyệt' : (language === 'KO' ? '승인자 (Accountable)' : 'Accountable')}</th>
               <th scope="col" className="px-3 py-3 text-left">{language === 'VI' ? 'Thời hạn' : (language === 'KO' ? '일정' : 'Target Dates')}</th>
               <th scope="col" className="px-3 py-3 text-center">{language === 'VI' ? 'Tiến độ' : (language === 'KO' ? '진척도' : 'Progress')}</th>
               <th scope="col" className="px-3 py-3 text-center">{language === 'VI' ? 'Trạng thái' : (language === 'KO' ? '상태' : 'Status')}</th>
