@@ -16,9 +16,11 @@ import {
   X,
   Save
 } from 'lucide-react';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 export default function WBSView() {
-  const { tasks, setTasks, activeProjectId, currentUser, logAction, t, language } = useApp();
+  const { tasks, setTasks, activeProjectId, currentUser, logAction, t, language, projects } = useApp();
   const [expandedTasks, setExpandedTasks] = useState<{ [key: string]: boolean }>({
     't1_prep': true,
     't1_exec': true,
@@ -48,6 +50,7 @@ export default function WBSView() {
   const [editPriority, setEditPriority] = useState<Task['priority']>('Medium');
   const [editRaci, setEditRaci] = useState<Task['raci']>('R');
 
+  const activeProject = projects.find(p => p.id === activeProjectId) || projects[0];
   const projectTasks = tasks.filter((t) => t.projectId === activeProjectId);
 
   const toggleExpand = (id: string) => {
@@ -159,6 +162,208 @@ export default function WBSView() {
 
     setEditingTask(null);
     logAction(activeProjectId, `Updated WBS task: "${editTitle}" (Progress: ${editProgress}%, Status: ${editStatus})`);
+  };
+
+  // Export to Excel with CJ Logo and Outline hierarchy
+  const handleExportToExcel = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('WBS Hierarchy');
+
+      // Title & logo cell heights
+      worksheet.getRow(1).height = 18;
+      worksheet.getRow(2).height = 18;
+      worksheet.getRow(3).height = 18;
+      worksheet.getRow(5).height = 25;
+
+      // Add logo dynamically
+      try {
+        const logoResponse = await fetch('/CJ_logo.png');
+        const logoBlob = await logoResponse.blob();
+        const logoArrayBuffer = await logoBlob.arrayBuffer();
+        
+        const imageId = workbook.addImage({
+          buffer: logoArrayBuffer,
+          extension: 'png',
+        });
+        
+        worksheet.addImage(imageId, {
+          tl: { col: 0.1, row: 0.2 },
+          ext: { width: 100, height: 42 }
+        });
+      } catch (err) {
+        console.error('Failed to load logo for Excel insert:', err);
+      }
+
+      // Title block styling
+      worksheet.getCell('C2').value = 'CJ FOODS VIETNAM';
+      worksheet.getCell('C2').font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FFE21E26' } }; // CJ Red
+      
+      worksheet.getCell('C3').value = 'CJ ProjectHub - Executive WBS Export';
+      worksheet.getCell('C3').font = { name: 'Segoe UI', size: 9, italic: true, color: { argb: 'FF595959' } };
+
+      worksheet.getCell('A5').value = language === 'VI' ? 'CẤU TRÚC PHÂN RÃ CÔNG VIỆC (WBS)' : (language === 'KO' ? '작업 분할 구조도 (WBS)' : 'WORK BREAKDOWN STRUCTURE (WBS)');
+      worksheet.getCell('A5').font = { name: 'Segoe UI', size: 12, bold: true, color: { argb: 'FF1F2937' } };
+
+      worksheet.getCell('A6').value = `Project: ${activeProject.code} - ${activeProject.name}`;
+      worksheet.getCell('A6').font = { name: 'Segoe UI', size: 9, bold: true, color: { argb: 'FF595959' } };
+
+      worksheet.getCell('A7').value = `Exported Date: ${new Date().toLocaleDateString()}  |  Project Manager: ${activeProject.pm}  |  Sponsor: ${activeProject.sponsor}`;
+      worksheet.getCell('A7').font = { name: 'Segoe UI', size: 9, color: { argb: 'FF7F7F7F' } };
+
+      // Define Columns
+      worksheet.columns = [
+        { header: 'WBS Element / Title', key: 'title', width: 45 },
+        { header: 'Description', key: 'description', width: 35 },
+        { header: 'Owner (PIC)', key: 'pic', width: 22 },
+        { header: 'Start Date', key: 'startDate', width: 14 },
+        { header: 'Due Date', key: 'dueDate', width: 14 },
+        { header: 'Progress', key: 'progress', width: 12 },
+        { header: 'Status', key: 'status', width: 16 },
+        { header: 'RACI', key: 'raci', width: 10 }
+      ];
+
+      // Shift header row down to row 9
+      const headerRow = worksheet.getRow(9);
+      headerRow.height = 26;
+      headerRow.values = [
+        language === 'VI' ? 'Tên công việc / Phân cấp' : (language === 'KO' ? '작업명 / 계층구조' : 'WBS Element / Title'),
+        language === 'VI' ? 'Mô tả chi tiết' : (language === 'KO' ? '작업 설명' : 'Description'),
+        language === 'VI' ? 'Người phụ trách (PIC)' : (language === 'KO' ? '담당자' : 'Owner (PIC)'),
+        language === 'VI' ? 'Ngày bắt đầu' : (language === 'KO' ? '시작일' : 'Start Date'),
+        language === 'VI' ? 'Ngày hạn chót' : (language === 'KO' ? '기한일' : 'Due Date'),
+        language === 'VI' ? 'Tiến độ' : (language === 'KO' ? '진척도' : 'Progress'),
+        language === 'VI' ? 'Trạng thái' : (language === 'KO' ? '상태' : 'Status'),
+        'RACI'
+      ];
+
+      // Header row styling
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF0055A5' } // CJ Blue
+        };
+        cell.font = {
+          name: 'Segoe UI',
+          size: 10,
+          bold: true,
+          color: { argb: 'FFFFFFFF' }
+        };
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle'
+        };
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF003B75' } },
+          bottom: { style: 'medium', color: { argb: 'FF003B75' } }
+        };
+      });
+
+      const getStatusDisplay = (status: string) => {
+        if (language === 'VI') {
+          if (status === 'Completed') return 'Hoàn thành';
+          if (status === 'In Progress') return 'Đang chạy';
+          if (status === 'Review') return 'Đang duyệt';
+          if (status === 'Blocked') return 'Bị nghẽn';
+          if (status === 'To Do') return 'Cần làm';
+          if (status === 'Planning') return 'Kế hoạch';
+        }
+        if (language === 'KO') {
+          if (status === 'Completed') return '완료';
+          if (status === 'In Progress') return '진행중';
+          if (status === 'Review') return '검토중';
+          if (status === 'Blocked') return '지연됨';
+          if (status === 'To Do') return '할 일';
+          if (status === 'Planning') return '계획';
+        }
+        return status;
+      };
+
+      // Recursive writer function
+      const writeTaskRow = (task: Task, depth: number) => {
+        const row = worksheet.addRow([
+          '   '.repeat(depth) + task.title,
+          task.description,
+          task.picName,
+          task.startDate,
+          task.dueDate,
+          task.progress / 100, // decimal represent percentage
+          getStatusDisplay(task.status),
+          task.raci
+        ]);
+
+        row.height = 22;
+        row.outlineLevel = depth;
+
+        row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+        row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
+        row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+        row.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
+        row.getCell(8).alignment = { horizontal: 'center', vertical: 'middle' };
+
+        row.getCell(6).numFmt = '0%';
+
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+            left: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+            right: { style: 'thin', color: { argb: 'FFE0E0E0' } }
+          };
+          cell.font = {
+            name: 'Segoe UI',
+            size: 9.5,
+            bold: depth === 0
+          };
+        });
+
+        // Background highlight for root-level WBS phases
+        if (depth === 0) {
+          row.eachCell((cell) => {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: 'FFF2F7FA' }
+            };
+          });
+        }
+
+        // Color coding cells
+        const statusCell = row.getCell(7);
+        if (task.status === 'Completed') {
+          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2F0D9' } };
+          statusCell.font = { color: { argb: 'FF385723' }, bold: true, name: 'Segoe UI', size: 9.5 };
+        } else if (task.status === 'In Progress') {
+          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDDEBF7' } };
+          statusCell.font = { color: { argb: 'FF1F4E78' }, bold: true, name: 'Segoe UI', size: 9.5 };
+        } else if (task.status === 'Blocked') {
+          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } };
+          statusCell.font = { color: { argb: 'FFC65911' }, bold: true, name: 'Segoe UI', size: 9.5 };
+        }
+
+        const raciCell = row.getCell(8);
+        raciCell.font = { color: { argb: 'FFE21E26' }, bold: true, name: 'Segoe UI', size: 9.5 }; // CJ Red
+        
+        const children = projectTasks.filter(t => t.parentId === task.id);
+        children.forEach(child => writeTaskRow(child, depth + 1));
+      };
+
+      // Execute tree traversals
+      rootTasks.forEach(task => writeTaskRow(task, 0));
+
+      // Buffer write
+      const buffer = await workbook.xlsx.writeBuffer();
+      const fileName = `${activeProject.code}_WBS_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      saveAs(new Blob([buffer]), fileName);
+      logAction(activeProjectId, `Exported WBS tree to Excel document: ${fileName}`);
+    } catch (err) {
+      console.error('Excel export process failed: ', err);
+      alert('Failed to generate Excel export file.');
+    }
   };
 
   const isReadOnly = currentUser.role === 'Viewer';
@@ -278,15 +483,27 @@ export default function WBSView() {
           </p>
         </div>
 
-        {!isReadOnly && (
+        {/* Buttons section */}
+        <div className="flex items-center space-x-2">
           <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center space-x-1 px-3 py-1.5 bg-cj-blue hover:bg-cj-blue/95 text-white rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+            onClick={handleExportToExcel}
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-cj-gray-200 hover:bg-cj-gray-100 text-cj-gray-800 rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-[0.98] cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
-            <span>{language === 'VI' ? 'Thêm công việc WBS' : (language === 'KO' ? 'WBS 작업 추가' : 'Add WBS Task')}</span>
+            {/* Excel Download Icon */}
+            <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+            <span>{language === 'VI' ? 'Xuất Excel' : (language === 'KO' ? '엑셀 내보내기' : 'Export to Excel')}</span>
           </button>
-        )}
+
+          {!isReadOnly && (
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-cj-blue hover:bg-cj-blue/95 text-white rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>{language === 'VI' ? 'Thêm công việc WBS' : (language === 'KO' ? 'WBS 작업 추가' : 'Add WBS Task')}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Task Creation Form Panel */}
