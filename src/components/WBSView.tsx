@@ -14,7 +14,10 @@ import {
   Users,
   Edit,
   X,
-  Save
+  Save,
+  Search,
+  Check,
+  Filter
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -49,6 +52,11 @@ export default function WBSView() {
   const [editStatus, setEditStatus] = useState<Task['status']>('To Do');
   const [editPriority, setEditPriority] = useState<Task['priority']>('Medium');
   const [editRaci, setEditRaci] = useState<Task['raci']>('R');
+
+  // Filter states (UX Upgrade #4)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterPicId, setFilterPicId] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   const activeProject = projects.find(p => p.id === activeProjectId) || projects[0];
   const projectTasks = tasks.filter((t) => t.projectId === activeProjectId);
@@ -164,19 +172,63 @@ export default function WBSView() {
     logAction(activeProjectId, `Updated WBS task: "${editTitle}" (Progress: ${editProgress}%, Status: ${editStatus})`);
   };
 
-  // Export to Excel with CJ Logo and Outline hierarchy
+  // One-Click Checkbox Toggle Completion (UX Upgrade #3)
+  const handleToggleComplete = (task: Task) => {
+    if (currentUser.role === 'Viewer') {
+      alert('Unauthorized: Viewers cannot modify tasks.');
+      return;
+    }
+
+    const isCompleted = task.status === 'Completed';
+    const newStatus = isCompleted ? 'To Do' : 'Completed';
+    const newProgress = isCompleted ? 0 : 100;
+
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id
+          ? {
+              ...t,
+              status: newStatus,
+              progress: newProgress
+            }
+          : t
+      )
+    );
+
+    logAction(activeProjectId, `Quick toggle task complete: "${task.title}" to ${newStatus} (${newProgress}%)`);
+  };
+
+  // Filter and Search logic
+  const isFiltered = searchQuery !== '' || filterPicId !== 'all' || filterStatus !== 'all';
+
+  const filteredTasks = projectTasks.filter((t) => {
+    const matchesSearch = searchQuery === '' ||
+      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.description.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesPic = filterPicId === 'all' || t.picId === filterPicId;
+    const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
+
+    return matchesSearch && matchesPic && matchesStatus;
+  });
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterPicId('all');
+    setFilterStatus('all');
+  };
+
+  // Export to Excel
   const handleExportToExcel = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('WBS Hierarchy');
 
-      // Title & logo cell heights
       worksheet.getRow(1).height = 18;
       worksheet.getRow(2).height = 18;
       worksheet.getRow(3).height = 18;
       worksheet.getRow(5).height = 25;
 
-      // Add logo dynamically
       try {
         const logoResponse = await fetch('/CJ_logo.png');
         const logoBlob = await logoResponse.blob();
@@ -195,9 +247,8 @@ export default function WBSView() {
         console.error('Failed to load logo for Excel insert:', err);
       }
 
-      // Title block styling
       worksheet.getCell('C2').value = 'CJ FOODS VIETNAM';
-      worksheet.getCell('C2').font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FFE21E26' } }; // CJ Red
+      worksheet.getCell('C2').font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FFE21E26' } };
       
       worksheet.getCell('C3').value = 'CJ ProjectHub - Executive WBS Export';
       worksheet.getCell('C3').font = { name: 'Segoe UI', size: 9, italic: true, color: { argb: 'FF595959' } };
@@ -211,7 +262,6 @@ export default function WBSView() {
       worksheet.getCell('A7').value = `Exported Date: ${new Date().toLocaleDateString()}  |  Project Manager: ${activeProject.pm}  |  Sponsor: ${activeProject.sponsor}`;
       worksheet.getCell('A7').font = { name: 'Segoe UI', size: 9, color: { argb: 'FF7F7F7F' } };
 
-      // Define Columns
       worksheet.columns = [
         { header: 'WBS Element / Title', key: 'title', width: 45 },
         { header: 'Description', key: 'description', width: 35 },
@@ -223,7 +273,6 @@ export default function WBSView() {
         { header: 'RACI', key: 'raci', width: 10 }
       ];
 
-      // Shift header row down to row 9
       const headerRow = worksheet.getRow(9);
       headerRow.height = 26;
       headerRow.values = [
@@ -237,27 +286,11 @@ export default function WBSView() {
         'RACI'
       ];
 
-      // Header row styling
       headerRow.eachCell((cell) => {
-        cell.fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FF0055A5' } // CJ Blue
-        };
-        cell.font = {
-          name: 'Segoe UI',
-          size: 10,
-          bold: true,
-          color: { argb: 'FFFFFFFF' }
-        };
-        cell.alignment = {
-          horizontal: 'center',
-          vertical: 'middle'
-        };
-        cell.border = {
-          top: { style: 'medium', color: { argb: 'FF003B75' } },
-          bottom: { style: 'medium', color: { argb: 'FF003B75' } }
-        };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0055A5' } };
+        cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top: { style: 'medium', color: { argb: 'FF003B75' } }, bottom: { style: 'medium', color: { argb: 'FF003B75' } } };
       });
 
       const getStatusDisplay = (status: string) => {
@@ -280,7 +313,6 @@ export default function WBSView() {
         return status;
       };
 
-      // Recursive writer function
       const writeTaskRow = (task: Task, depth: number) => {
         const row = worksheet.addRow([
           '   '.repeat(depth) + task.title,
@@ -288,7 +320,7 @@ export default function WBSView() {
           task.picName,
           task.startDate,
           task.dueDate,
-          task.progress / 100, // decimal represent percentage
+          task.progress / 100,
           getStatusDisplay(task.status),
           task.raci
         ]);
@@ -314,25 +346,15 @@ export default function WBSView() {
             left: { style: 'thin', color: { argb: 'FFE0E0E0' } },
             right: { style: 'thin', color: { argb: 'FFE0E0E0' } }
           };
-          cell.font = {
-            name: 'Segoe UI',
-            size: 9.5,
-            bold: depth === 0
-          };
+          cell.font = { name: 'Segoe UI', size: 9.5, bold: depth === 0 };
         });
 
-        // Background highlight for root-level WBS phases
         if (depth === 0) {
           row.eachCell((cell) => {
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFF2F7FA' }
-            };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F7FA' } };
           });
         }
 
-        // Color coding cells
         const statusCell = row.getCell(7);
         if (task.status === 'Completed') {
           statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2F0D9' } };
@@ -346,23 +368,21 @@ export default function WBSView() {
         }
 
         const raciCell = row.getCell(8);
-        raciCell.font = { color: { argb: 'FFE21E26' }, bold: true, name: 'Segoe UI', size: 9.5 }; // CJ Red
+        raciCell.font = { color: { argb: 'FFE21E26' }, bold: true, name: 'Segoe UI', size: 9.5 };
         
         const children = projectTasks.filter(t => t.parentId === task.id);
         children.forEach(child => writeTaskRow(child, depth + 1));
       };
 
-      // Execute tree traversals
       rootTasks.forEach(task => writeTaskRow(task, 0));
 
-      // Buffer write
       const buffer = await workbook.xlsx.writeBuffer();
       const fileName = `${activeProject.code}_WBS_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
       saveAs(new Blob([buffer]), fileName);
-      logAction(activeProjectId, `Exported WBS tree to Excel document: ${fileName}`);
+      logAction(activeProjectId, `Exported WBS tree to Excel: ${fileName}`);
     } catch (err) {
-      console.error('Excel export process failed: ', err);
-      alert('Failed to generate Excel export file.');
+      console.error('Excel export failed: ', err);
+      alert('Failed to generate Excel export.');
     }
   };
 
@@ -408,7 +428,7 @@ export default function WBSView() {
       <>
         <tr className="hover:bg-cj-gray-100/30 border-b border-cj-gray-100 transition-colors">
           <td className="py-3.5 pl-4 pr-3 text-xs" style={{ paddingLeft: `${depth * 20 + 16}px` }}>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-2">
               {hasChildren ? (
                 <button onClick={() => toggleExpand(task.id)} className="p-0.5 rounded hover:bg-cj-gray-200 cursor-pointer">
                   {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
@@ -416,6 +436,25 @@ export default function WBSView() {
               ) : (
                 <div className="w-5" />
               )}
+
+              {/* Quick Completion Checkbox (UX Upgrade #3) */}
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => handleToggleComplete(task)}
+                  className="hover:scale-110 transition-all cursor-pointer flex-shrink-0"
+                  title={task.status === 'Completed' ? 'Mark Incomplete' : 'Mark Completed'}
+                >
+                  {task.status === 'Completed' ? (
+                    <div className="w-4 h-4 rounded-full border border-cj-blue bg-cj-blue flex items-center justify-center text-white shadow-sm">
+                      <Check className="w-2.5 h-2.5 stroke-[3px]" />
+                    </div>
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border-2 border-gray-300 hover:border-cj-blue transition-colors bg-white" />
+                  )}
+                </button>
+              )}
+
               <span className="font-extrabold text-cj-gray-800">{task.title}</span>
             </div>
           </td>
@@ -468,6 +507,29 @@ export default function WBSView() {
 
   const rootTasks = buildTree(null);
 
+  // Status displays inside status filter
+  const getStatusDisplayFilter = (status: string) => {
+    if (language === 'VI') {
+      if (status === 'Completed') return 'Hoàn thành';
+      if (status === 'In Progress') return 'Đang chạy';
+      if (status === 'Review') return 'Đang duyệt';
+      if (status === 'Blocked') return 'Bị nghẽn';
+      if (status === 'To Do') return 'Cần làm';
+      if (status === 'Planning') return 'Kế hoạch';
+      if (status === 'Backlog') return 'Tồn đọng';
+    }
+    if (language === 'KO') {
+      if (status === 'Completed') return '완료';
+      if (status === 'In Progress') return '진행중';
+      if (status === 'Review') return '검토중';
+      if (status === 'Blocked') return '지연됨';
+      if (status === 'To Do') return '할 일';
+      if (status === 'Planning') return '계획';
+      if (status === 'Backlog') return '백로그';
+    }
+    return status;
+  };
+
   return (
     <div className="space-y-6 p-6 overflow-y-auto h-[calc(100vh-64px)] w-full select-none">
       
@@ -489,7 +551,6 @@ export default function WBSView() {
             onClick={handleExportToExcel}
             className="flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-cj-gray-200 hover:bg-cj-gray-100 text-cj-gray-800 rounded-lg text-xs font-semibold shadow-sm transition-all active:scale-[0.98] cursor-pointer"
           >
-            {/* Excel Download Icon */}
             <svg className="h-4 w-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
             <span>{language === 'VI' ? 'Xuất Excel' : (language === 'KO' ? '엑셀 내보내기' : 'Export to Excel')}</span>
           </button>
@@ -504,6 +565,63 @@ export default function WBSView() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Live Filters Toolbelt (UX Upgrade #4) */}
+      <div className="bg-white p-4 rounded-xl border border-cj-gray-200 shadow-sm flex max-md:flex-col items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Text Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+            <input
+              type="text"
+              placeholder={language === 'VI' ? 'Tìm tên công việc...' : (language === 'KO' ? '작업명 검색...' : 'Search task title...')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-3 py-1.5 bg-cj-gray-100/60 focus:bg-white border border-transparent focus:border-cj-gray-200 rounded-lg text-xs outline-none transition-all w-52 placeholder:text-gray-400 font-medium"
+            />
+          </div>
+
+          {/* PIC Filter */}
+          <div className="flex items-center space-x-1">
+            <Filter className="h-3 w-3 text-gray-400" />
+            <select
+              className="text-xs p-1.5 bg-cj-gray-100/60 hover:bg-cj-gray-100 border border-transparent rounded-lg outline-none cursor-pointer font-bold text-cj-gray-700"
+              value={filterPicId}
+              onChange={(e) => setFilterPicId(e.target.value)}
+            >
+              <option value="all">{language === 'VI' ? 'Tất cả người phụ trách' : (language === 'KO' ? '전체 담당자' : 'All Owners')}</option>
+              {mockUsers.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="flex items-center space-x-1">
+            <select
+              className="text-xs p-1.5 bg-cj-gray-100/60 hover:bg-cj-gray-100 border border-transparent rounded-lg outline-none cursor-pointer font-bold text-cj-gray-700"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <option value="all">{language === 'VI' ? 'Tất cả trạng thái' : (language === 'KO' ? '전체 상태' : 'All Statuses')}</option>
+              {['Backlog', 'Planning', 'To Do', 'In Progress', 'Review', 'Blocked', 'Completed'].map(status => (
+                <option key={status} value={status}>{getStatusDisplayFilter(status)}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Clear Filters */}
+        {isFiltered && (
+          <button
+            onClick={clearFilters}
+            className="text-[10px] font-bold text-cj-red hover:underline cursor-pointer flex items-center space-x-1"
+          >
+            <X className="h-3 w-3" />
+            <span>{language === 'VI' ? 'Xóa bộ lọc' : (language === 'KO' ? '필터 해제' : 'Clear Filters')}</span>
+          </button>
+        )}
       </div>
 
       {/* Task Creation Form Panel */}
@@ -653,7 +771,19 @@ export default function WBSView() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-cj-gray-100">
-            {rootTasks.length > 0 ? (
+            {isFiltered ? (
+              filteredTasks.length > 0 ? (
+                filteredTasks.map((t) => (
+                  <TreeNode key={t.id} task={t} depth={0} />
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-xs text-gray-400">
+                    {language === 'VI' ? 'Không tìm thấy công việc nào khớp với bộ lọc.' : (language === 'KO' ? '필터 조건에 부합하는 작업이 없습니다.' : 'No tasks match the active filters.')}
+                  </td>
+                </tr>
+              )
+            ) : rootTasks.length > 0 ? (
               rootTasks.map((t) => (
                 <TreeNode key={t.id} task={t} depth={0} />
               ))
