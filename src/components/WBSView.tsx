@@ -507,6 +507,141 @@ export default function WBSView() {
     );
   };
 
+  // Recursive Mobile Task Card component for mobile responsive view
+  const MobileTaskCard = ({ task, depth = 0 }: { task: Task; depth: number }) => {
+    const children = projectTasks.filter((t) => t.parentId === task.id);
+    const hasChildren = children.length > 0;
+    const isExpanded = expandedTasks[task.id];
+
+    const getStatusStyle = (status: string) => {
+      if (status === 'Completed') return 'bg-green-100 text-green-700';
+      if (status === 'In Progress') return 'bg-cj-blue/10 text-cj-blue';
+      if (status === 'Review') return 'bg-cj-orange/10 text-cj-orange';
+      if (status === 'Blocked') return 'bg-red-100 text-red-600';
+      return 'bg-gray-100 text-gray-500';
+    };
+
+    const getStatusDisplay = (status: string) => {
+      if (language === 'VI') {
+        if (status === 'Completed') return 'Hoàn thành';
+        if (status === 'In Progress') return 'Đang chạy';
+        if (status === 'Review') return 'Đang duyệt';
+        if (status === 'Blocked') return 'Bị nghẽn';
+        if (status === 'To Do') return 'Cần làm';
+        if (status === 'Planning') return 'Kế hoạch';
+        if (status === 'Backlog') return 'Tồn đọng';
+      }
+      if (language === 'KO') {
+        if (status === 'Completed') return '완료';
+        if (status === 'In Progress') return '진행중';
+        if (status === 'Review') return '검토중';
+        if (status === 'Blocked') return '지연됨';
+        if (status === 'To Do') return '할 일';
+        if (status === 'Planning') return '계획';
+        if (status === 'Backlog') return '백로그';
+      }
+      return status;
+    };
+
+    return (
+      <div className="space-y-3">
+        <div 
+          className="bg-white border border-cj-gray-200/80 rounded-xl p-3 shadow-sm space-y-2.5 transition-all"
+          style={{ marginLeft: `${depth * 10}px` }}
+        >
+          <div className="flex justify-between items-start space-x-2">
+            <div className="flex items-center space-x-2 min-w-0">
+              {hasChildren ? (
+                <button onClick={() => toggleExpand(task.id)} className="p-0.5 rounded hover:bg-cj-gray-200 cursor-pointer shrink-0">
+                  {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                </button>
+              ) : (
+                <div className="w-5 shrink-0" />
+              )}
+
+              {/* Quick Completion Checkbox */}
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => handleToggleComplete(task)}
+                  className="hover:scale-110 transition-all cursor-pointer shrink-0"
+                >
+                  {task.status === 'Completed' ? (
+                    <div className="w-4.5 h-4.5 rounded-full border border-cj-blue bg-cj-blue flex items-center justify-center text-white shadow-sm">
+                      <Check className="w-2.5 h-2.5 stroke-[3px]" />
+                    </div>
+                  ) : (
+                    <div className="w-4.5 h-4.5 rounded-full border-2 border-gray-300 hover:border-cj-blue bg-white" />
+                  )}
+                </button>
+              )}
+
+              <div className="min-w-0">
+                <span className="font-extrabold text-cj-gray-800 text-xs block truncate">{task.title}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-1 shrink-0">
+              <span className="font-black text-[9px] text-cj-red bg-cj-red/5 px-1.5 py-0.5 rounded">{task.raci}</span>
+            </div>
+          </div>
+
+          {task.description && (
+            <p className="text-[10px] text-gray-500 leading-normal bg-cj-gray-100/30 p-2 rounded-lg truncate">
+              {task.description}
+            </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-500">
+            <div>
+              <span className="text-gray-400 block font-semibold text-[8px]">{language === 'VI' ? 'PHỤ TRÁCH' : 'PIC'}</span>
+              <span className="font-bold text-cj-gray-700">{task.picName}</span>
+            </div>
+            <div>
+              <span className="text-gray-400 block font-semibold text-[8px]">{language === 'VI' ? 'THỜI HẠN' : 'DUE DATE'}</span>
+              <span className="font-medium text-cj-gray-700">{task.dueDate}</span>
+            </div>
+            <div className="col-span-2">
+              <div className="flex justify-between items-center mb-0.5">
+                <span className="text-gray-400 font-semibold text-[8px]">{language === 'VI' ? 'TIẾN ĐỘ' : 'PROGRESS'}</span>
+                <span className="font-bold text-cj-blue">{task.progress}%</span>
+              </div>
+              <div className="w-full bg-cj-gray-100 h-1 rounded-full overflow-hidden">
+                <div className="bg-cj-blue h-full rounded-full" style={{ width: `${task.progress}%` }} />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-2 border-t border-cj-gray-100 text-[10px]">
+            <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] uppercase ${getStatusStyle(task.status)}`}>
+              {getStatusDisplay(task.status)}
+            </span>
+
+            {!isReadOnly && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleStartEdit(task)}
+                  className="text-cj-blue font-bold px-2 py-1 bg-cj-blue/5 rounded hover:bg-cj-blue/10 cursor-pointer transition-colors"
+                >
+                  {language === 'VI' ? 'Sửa' : 'Edit'}
+                </button>
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="text-cj-red font-bold px-2 py-1 bg-red-50 rounded hover:bg-red-100 cursor-pointer transition-colors"
+                >
+                  {language === 'VI' ? 'Xóa' : 'Delete'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        {hasChildren && isExpanded && children.map((child) => (
+          <MobileTaskCard key={child.id} task={child} depth={depth + 1} />
+        ))}
+      </div>
+    );
+  };
+
   const rootTasks = buildTree(null);
 
   // Status displays inside status filter
@@ -757,8 +892,31 @@ export default function WBSView() {
         </form>
       )}
 
-      {/* Hierarchical WBS Table */}
-      <div className="bg-white rounded-2xl border border-cj-gray-200/80 shadow-soft overflow-x-auto">
+      {/* Mobile WBS List View */}
+      <div className="md:hidden space-y-3">
+        {isFiltered ? (
+          filteredTasks.length > 0 ? (
+            filteredTasks.map((t) => (
+              <MobileTaskCard key={t.id} task={t} depth={0} />
+            ))
+          ) : (
+            <div className="text-center py-8 text-xs text-gray-400 bg-white border border-cj-gray-200 rounded-xl shadow-soft">
+              {language === 'VI' ? 'Không tìm thấy công việc nào khớp với bộ lọc.' : (language === 'KO' ? '필터 조건에 부합하는 작업이 없습니다.' : 'No tasks match the active filters.')}
+            </div>
+          )
+        ) : rootTasks.length > 0 ? (
+          rootTasks.map((t) => (
+            <MobileTaskCard key={t.id} task={t} depth={0} />
+          ))
+        ) : (
+          <div className="text-center py-8 text-xs text-gray-400 bg-white border border-cj-gray-200 rounded-xl shadow-soft">
+            No tasks found in WBS registry. Use the Add Task button to initialize elements.
+          </div>
+        )}
+      </div>
+
+      {/* Hierarchical WBS Table (Desktop) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-cj-gray-200/80 shadow-soft overflow-x-auto">
         <table className="min-w-full divide-y divide-cj-gray-200">
           <thead className="bg-cj-gray-100/50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
             <tr>
