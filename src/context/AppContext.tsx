@@ -128,7 +128,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const storedTasks = localStorage.getItem('cj_tasks');
           if (storedTasks) setTasks(JSON.parse(storedTasks));
 
-          const { data: riskData } = await supabase.from('risks').select('*');
+
           const storedRisks = localStorage.getItem('cj_risks');
           if (storedRisks) setRisks(JSON.parse(storedRisks));
 
