@@ -23,7 +23,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
 export default function WBSView() {
-  const { tasks, setTasks, activeProjectId, currentUser, logAction, t, language, projects } = useApp();
+  const { tasks, setTasks, activeProjectId, currentUser, logAction, t, language, projects, addNotification } = useApp();
   const [expandedTasks, setExpandedTasks] = useState<{ [key: string]: boolean }>({
     't1_prep': true,
     't1_exec': true,
@@ -109,6 +109,7 @@ export default function WBSView() {
     setNewTitle('');
     setNewDesc('');
     logAction(activeProjectId, `Created WBS task: "${newTitle}"`);
+    addNotification(language === 'VI' ? `Đã tạo công việc mới: "${newTitle}"` : (language === 'KO' ? `새 작업 생성됨: "${newTitle}"` : `New task element created: "${newTitle}"`), 'approval');
   };
 
   const handleDeleteTask = (id: string) => {
@@ -119,6 +120,7 @@ export default function WBSView() {
     if (confirm(language === 'VI' ? 'Bạn có chắc chắn muốn xóa tác vụ này và các tác vụ con liên quan?' : (language === 'KO' ? '이 작업과 관련된 모든 하위 작업을 삭제하시겠습니까?' : 'Are you sure you want to delete this task and its related subtasks?'))) {
       setTasks((prev) => prev.filter((t) => t.id !== id && t.parentId !== id));
       logAction(activeProjectId, `Removed task and its children: ID ${id}`);
+      addNotification(language === 'VI' ? `Đã xóa công việc WBS` : (language === 'KO' ? `WBS 작업 삭제됨` : `WBS task element deleted`), 'issue');
     }
   };
 
@@ -170,6 +172,7 @@ export default function WBSView() {
 
     setEditingTask(null);
     logAction(activeProjectId, `Updated WBS task: "${editTitle}" (Progress: ${editProgress}%, Status: ${editStatus})`);
+    addNotification(language === 'VI' ? `Đã cập nhật công việc: "${editTitle}" (${editProgress}%)` : (language === 'KO' ? `작업 업데이트됨: "${editTitle}" (${editProgress}%)` : `Task updated: "${editTitle}" (Progress: ${editProgress}%)`), 'approval');
   };
 
   // One-Click Checkbox Toggle Completion (UX Upgrade #3)
@@ -196,6 +199,7 @@ export default function WBSView() {
     );
 
     logAction(activeProjectId, `Quick toggle task complete: "${task.title}" to ${newStatus} (${newProgress}%)`);
+    addNotification(language === 'VI' ? `Đã đổi trạng thái "${task.title}" thành ${newStatus} (${newProgress}%)` : (language === 'KO' ? `작업 상태 변경됨: "${task.title}" -> ${newStatus} (${newProgress}%)` : `Task quick toggled: "${task.title}" to ${newStatus} (${newProgress}%)`), 'milestone');
   };
 
   // Filter and Search logic
@@ -601,14 +605,9 @@ export default function WBSView() {
               <span className="text-gray-400 block font-semibold text-[8px]">{language === 'VI' ? 'THỜI HẠN' : 'DUE DATE'}</span>
               <span className="font-medium text-cj-gray-700">{task.dueDate}</span>
             </div>
-            <div className="col-span-2">
-              <div className="flex justify-between items-center mb-0.5">
-                <span className="text-gray-400 font-semibold text-[8px]">{language === 'VI' ? 'TIẾN ĐỘ' : 'PROGRESS'}</span>
-                <span className="font-bold text-cj-blue">{task.progress}%</span>
-              </div>
-              <div className="w-full bg-cj-gray-100 h-1 rounded-full overflow-hidden">
-                <div className="bg-cj-blue h-full rounded-full" style={{ width: `${task.progress}%` }} />
-              </div>
+            <div className="col-span-2 flex justify-between items-center bg-cj-gray-100/50 px-2 py-1 rounded border border-cj-gray-200/40">
+              <span className="text-gray-400 font-bold text-[8px]">{language === 'VI' ? 'TIẾN ĐỘ' : 'PROGRESS'}</span>
+              <span className="font-extrabold text-cj-blue">{task.progress}%</span>
             </div>
           </div>
 

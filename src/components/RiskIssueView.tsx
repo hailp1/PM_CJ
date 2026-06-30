@@ -13,7 +13,8 @@ export default function RiskIssueView() {
     setIssues,
     activeProjectId,
     currentUser,
-    logAction
+    logAction,
+    addNotification
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'risks' | 'issues'>('risks');
@@ -76,6 +77,7 @@ export default function RiskIssueView() {
     setRiskDesc('');
     setRiskMitigation('');
     logAction(activeProjectId, `Registered Risk: "${riskDesc}" with severity ${severity}`);
+    addNotification(`New project risk reported: "${riskDesc.slice(0, 35)}..." (${severity} Severity)`, 'issue');
   };
 
   const handleAddIssue = (e: React.FormEvent) => {
@@ -104,6 +106,7 @@ export default function RiskIssueView() {
     setIssueRoot('');
     setIssueAction('');
     logAction(activeProjectId, `Logged Issue: "${issueDesc}"`);
+    addNotification(`New project issue logged: "${issueDesc.slice(0, 35)}..." (${issuePriority} Priority)`, 'issue');
   };
 
   const handleToggleRiskStatus = (riskId: string) => {
