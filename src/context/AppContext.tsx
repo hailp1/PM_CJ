@@ -219,20 +219,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Synchronize project completion progress based on child task completion percentage
   useEffect(() => {
-    projects.forEach((proj) => {
+    let changed = false;
+    const newProjects = projects.map((proj) => {
       const projTasks = tasks.filter((t) => t.projectId === proj.id && t.parentId === null);
       if (projTasks.length > 0) {
         const avgProgress = Math.round(
           projTasks.reduce((acc, task) => acc + task.progress, 0) / projTasks.length
         );
         if (proj.progress !== avgProgress) {
-          setProjects((prev) =>
-            prev.map((p) => (p.id === proj.id ? { ...p, progress: avgProgress } : p))
-          );
+          changed = true;
+          return { ...proj, progress: avgProgress };
         }
       }
+      return proj;
     });
-  }, [tasks, projects]);
+
+    if (changed) {
+      setProjects(newProjects);
+    }
+  }, [tasks]);
 
   return (
     <AppContext.Provider
