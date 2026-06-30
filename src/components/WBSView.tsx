@@ -758,7 +758,7 @@ export default function WBSView() {
       )}
 
       {/* Hierarchical WBS Table */}
-      <div className="bg-white rounded-2xl border border-cj-gray-200/80 shadow-soft overflow-hidden">
+      <div className="bg-white rounded-2xl border border-cj-gray-200/80 shadow-soft overflow-x-auto">
         <table className="min-w-full divide-y divide-cj-gray-200">
           <thead className="bg-cj-gray-100/50 text-[10px] font-bold uppercase tracking-wider text-gray-500">
             <tr>

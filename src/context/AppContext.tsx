@@ -58,6 +58,8 @@ interface AppContextType {
   language: 'EN' | 'VI' | 'KO';
   setLanguage: (lang: 'EN' | 'VI' | 'KO') => void;
   t: (key: string) => string;
+  mobileMenuOpen: boolean;
+  setMobileMenuOpen: (val: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -76,6 +78,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [resources, setResources] = useState<ResourceAllocation[]>(mockResourceAllocations);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(mockAuditLogs);
   const [language, setLanguage] = useState<'EN' | 'VI' | 'KO'>('EN');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   const [notifications, setNotifications] = useState<
     { id: string; text: string; time: string; read: boolean; type: string }[]
@@ -393,7 +396,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsLoggedIn,
         language,
         setLanguage,
-        t
+        t,
+        mobileMenuOpen,
+        setMobileMenuOpen
       }}
     >
       {children}

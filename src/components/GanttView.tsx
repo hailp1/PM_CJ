@@ -81,7 +81,7 @@ export default function GanttView() {
       </div>
 
       {/* Gantt Matrix Visualization */}
-      <div className="bg-white border border-cj-gray-200/80 rounded-2xl shadow-soft overflow-hidden flex flex-col">
+      <div className="bg-white border border-cj-gray-200/80 rounded-2xl shadow-soft overflow-x-auto flex flex-col">
         
         {/* Timeline Header Row */}
         <div className="flex bg-cj-gray-100/50 border-b border-cj-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider select-none">

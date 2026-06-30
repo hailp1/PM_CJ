@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Bell, Search, ChevronDown, CheckSquare, Shield, AlertTriangle, LogOut, Check, Plus, X } from 'lucide-react';
+import { Bell, Search, ChevronDown, CheckSquare, Shield, AlertTriangle, LogOut, Check, Plus, X, Menu } from 'lucide-react';
 import { mockUsers } from '@/data/mockData';
 
 export default function Header() {
@@ -19,7 +19,9 @@ export default function Header() {
     logAction,
     language,
     setLanguage,
-    t
+    t,
+    mobileMenuOpen,
+    setMobileMenuOpen
   } = useApp();
 
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -87,25 +89,34 @@ export default function Header() {
 
   return (
     <header className="h-16 bg-white border-b border-cj-gray-200/80 px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm select-none">
-      {/* Left: Logo & Project Switcher */}
-      <div className="flex items-center space-x-6">
-        <div className="flex items-center space-x-2">
-          <img src="/CJ_logo.png" alt="CJ Foods Vietnam Logo" className="h-9 w-auto object-contain" />
-          <span className="font-bold text-lg tracking-tight text-cj-gray-800">
+      {/* Left: Hamburger menu toggle, Logo & Project Switcher */}
+      <div className="flex items-center space-x-3 sm:space-x-6">
+        {/* Mobile menu toggle button */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-1.5 text-gray-500 hover:text-cj-gray-800 hover:bg-cj-gray-100 rounded-lg md:hidden cursor-pointer"
+          title="Toggle Navigation Menu"
+        >
+          <Menu className="h-5.5 w-5.5" />
+        </button>
+
+        <div className="flex items-center space-x-2 shrink-0">
+          <img src="/CJ_logo.png" alt="CJ Foods Vietnam Logo" className="h-8 sm:h-9 w-auto object-contain" />
+          <span className="font-bold text-base sm:text-lg tracking-tight text-cj-gray-800 hidden xs:inline">
             CJ <span className="text-cj-red font-extrabold">ProjectHub</span>
           </span>
         </div>
 
-        <div className="h-6 w-px bg-cj-gray-200" />
+        <div className="h-6 w-px bg-cj-gray-200 hidden md:block" />
 
         {/* Project Selector */}
-        <div className="relative flex items-center">
-          <label className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider absolute -top-3 left-1">
+        <div className="relative flex items-center shrink-0">
+          <label className="text-[9px] text-gray-500 font-semibold uppercase tracking-wider absolute -top-3 left-1 hidden sm:block">
             {t('activeProject')}
           </label>
           <div className="relative flex items-center">
             <select
-              className="pl-2 pr-8 py-1.5 bg-cj-gray-100/60 hover:bg-cj-gray-100 border-0 rounded-lg text-sm font-semibold text-cj-gray-800 focus:ring-2 focus:ring-cj-red/10 outline-none transition-all cursor-pointer appearance-none max-w-[280px] truncate"
+              className="pl-2 pr-7 py-1 bg-cj-gray-100/60 hover:bg-cj-gray-100 border-0 rounded-lg text-xs sm:text-sm font-semibold text-cj-gray-800 focus:ring-2 focus:ring-cj-red/10 outline-none transition-all cursor-pointer appearance-none max-w-[120px] xs:max-w-[160px] sm:max-w-[280px] truncate"
               value={activeProjectId}
               onChange={(e) => setActiveProjectId(e.target.value)}
             >
@@ -115,7 +126,7 @@ export default function Header() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-2 top-2.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            <ChevronDown className="absolute right-1.5 top-2.5 h-3.5 w-3.5 text-gray-500 pointer-events-none" />
             
             {/* Create Project Button */}
             {!['Viewer', 'Member'].includes(currentUser.role) && (
