@@ -178,26 +178,30 @@ export default function Header() {
               setShowNotifications(false);
               setShowProfileMenu(false);
             }}
-            className="flex items-center space-x-1 px-2 py-1.5 hover:bg-cj-gray-100 rounded-lg text-base transition-all cursor-pointer border border-cj-gray-200"
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 hover:bg-cj-gray-100 rounded-lg transition-all cursor-pointer border border-cj-gray-200"
           >
-            <span>{language === 'EN' ? '🇬🇧' : language === 'VI' ? '🇻🇳' : '🇰🇷'}</span>
+            <span className="text-xs font-extrabold tracking-wide text-cj-gray-800">
+              {language === 'EN' ? 'EN' : language === 'VI' ? 'VI' : 'KO'}
+            </span>
             <ChevronDown className="h-3 w-3 text-gray-500" />
           </button>
           {showLangMenu && (
-            <div className="absolute right-0 mt-2.5 w-14 bg-white rounded-lg shadow-soft border border-cj-gray-200 overflow-hidden z-50 animate-scale-in">
-              <div className="p-1 space-y-0.5">
-                {(['EN', 'VI', 'KO'] as const).map((lang) => (
+            <div className="absolute right-0 mt-2.5 w-36 bg-white rounded-xl shadow-soft border border-cj-gray-200 overflow-hidden z-50 animate-scale-in">
+              <div className="p-1.5 space-y-0.5">
+                {([{ code: 'EN' as const, label: 'English', flag: '🇬🇧' }, { code: 'VI' as const, label: 'Tiếng Việt', flag: '🇻🇳' }, { code: 'KO' as const, label: '한국어', flag: '🇰🇷' }]).map((item) => (
                   <button
-                    key={lang}
+                    key={item.code}
                     onClick={() => {
-                      setLanguage(lang);
+                      setLanguage(item.code);
                       setShowLangMenu(false);
                     }}
-                    className={`w-full text-center py-1 rounded transition-colors text-base cursor-pointer ${
-                      language === lang ? 'bg-cj-blue text-white' : 'hover:bg-cj-gray-100'
+                    className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-lg transition-colors text-xs font-semibold cursor-pointer ${
+                      language === item.code ? 'bg-cj-blue text-white' : 'hover:bg-cj-gray-100 text-cj-gray-700'
                     }`}
                   >
-                    {lang === 'EN' ? '🇬🇧' : lang === 'VI' ? '🇻🇳' : '🇰🇷'}
+                    <span className="text-base leading-none">{item.flag}</span>
+                    <span>{item.label}</span>
+                    {language === item.code && <Check className="h-3 w-3 ml-auto" />}
                   </button>
                 ))}
               </div>

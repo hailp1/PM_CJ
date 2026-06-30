@@ -413,6 +413,37 @@ export default function WBSView() {
     return activeProject.pm;
   };
 
+  // Shared status style helpers (parent scope for modal access)
+  const getStatusStyle = (status: string) => {
+    if (status === 'Completed') return 'bg-green-100 text-green-700';
+    if (status === 'In Progress') return 'bg-cj-blue/10 text-cj-blue';
+    if (status === 'Review') return 'bg-cj-orange/10 text-cj-orange';
+    if (status === 'Blocked') return 'bg-red-100 text-red-600';
+    return 'bg-gray-100 text-gray-500';
+  };
+
+  const getStatusDisplay = (status: string) => {
+    if (language === 'VI') {
+      if (status === 'Completed') return 'Hoàn thành';
+      if (status === 'In Progress') return 'Đang chạy';
+      if (status === 'Review') return 'Đang duyệt';
+      if (status === 'Blocked') return 'Bị nghẽn';
+      if (status === 'To Do') return 'Cần làm';
+      if (status === 'Planning') return 'Kế hoạch';
+      if (status === 'Backlog') return 'Tồn đọng';
+    }
+    if (language === 'KO') {
+      if (status === 'Completed') return '완료';
+      if (status === 'In Progress') return '진행중';
+      if (status === 'Review') return '검토중';
+      if (status === 'Blocked') return '지연됨';
+      if (status === 'To Do') return '할 일';
+      if (status === 'Planning') return '계획';
+      if (status === 'Backlog') return '백로그';
+    }
+    return status;
+  };
+
   // Recursive Tree Node component
   const TreeNode = ({ task, depth = 0 }: { task: Task; depth: number }) => {
     const children = projectTasks.filter((t) => t.parentId === task.id);
@@ -500,15 +531,11 @@ export default function WBSView() {
           <td className="px-3 py-3.5 text-xs text-center">
             <span 
               onClick={() => {
-                if (task.status === 'Blocked' || task.status === 'Review' || task.status === 'Planning') {
-                  setSelectedStatusTask(task);
-                  setStatusNoteText((task as any).statusNote || '');
-                  setShowStatusNoteModal(true);
-                }
+                setSelectedStatusTask(task);
+                setStatusNoteText((task as any).statusNote || '');
+                setShowStatusNoteModal(true);
               }}
-              className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full font-bold text-[10px] uppercase transition-all hover:scale-105 ${
-                (task.status === 'Blocked' || task.status === 'Review' || task.status === 'Planning') ? 'cursor-pointer hover:opacity-90' : ''
-              } ${getStatusStyle(task.status)}`}
+              className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full font-bold text-[10px] uppercase transition-all hover:scale-105 cursor-pointer hover:opacity-90 ${getStatusStyle(task.status)}`}
             >
               <span>{getStatusDisplay(task.status)}</span>
               {(task as any).statusNote && <span className="w-1.5 h-1.5 bg-cj-red rounded-full animate-pulse" />}
@@ -652,15 +679,11 @@ export default function WBSView() {
           <div className="flex justify-between items-center pt-2 border-t border-cj-gray-100 text-[10px]">
             <span 
               onClick={() => {
-                if (task.status === 'Blocked' || task.status === 'Review' || task.status === 'Planning') {
-                  setSelectedStatusTask(task);
-                  setStatusNoteText((task as any).statusNote || '');
-                  setShowStatusNoteModal(true);
-                }
+                setSelectedStatusTask(task);
+                setStatusNoteText((task as any).statusNote || '');
+                setShowStatusNoteModal(true);
               }}
-              className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full font-bold text-[9px] uppercase transition-all hover:scale-105 ${
-                (task.status === 'Blocked' || task.status === 'Review' || task.status === 'Planning') ? 'cursor-pointer hover:opacity-90' : ''
-              } ${getStatusStyle(task.status)}`}
+              className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full font-bold text-[9px] uppercase transition-all hover:scale-105 cursor-pointer hover:opacity-90 ${getStatusStyle(task.status)}`}
             >
               <span>{getStatusDisplay(task.status)}</span>
               {(task as any).statusNote && <span className="w-1 h-1 bg-cj-red rounded-full animate-pulse" />}
@@ -1171,29 +1194,31 @@ export default function WBSView() {
 
             <div className="space-y-3 text-xs font-semibold text-cj-gray-800">
               <div>
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Task Title</span>
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                  {language === 'VI' ? 'Tên công việc' : 'Task Title'}
+                </span>
                 <p className="text-xs font-bold text-cj-gray-800 mt-0.5">{selectedStatusTask.title}</p>
               </div>
 
               <div>
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Current Status</span>
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                  {language === 'VI' ? 'Trạng thái hiện tại' : 'Current Status'}
+                </span>
                 <div className="mt-1">
-                  <span className={`px-2.5 py-0.5 rounded-full font-bold text-[9px] uppercase ${
-                    selectedStatusTask.status === 'Blocked' ? 'bg-red-100 text-red-600' : 'bg-cj-orange/10 text-cj-orange'
-                  }`}>
-                    {selectedStatusTask.status === 'Blocked' ? (language === 'VI' ? 'Bị nghẽn' : 'Blocked') : (language === 'VI' ? 'Đang duyệt / Pending' : 'Review / Pending')}
+                  <span className={`px-2.5 py-0.5 rounded-full font-bold text-[9px] uppercase ${getStatusStyle(selectedStatusTask.status)}`}>
+                    {getStatusDisplay(selectedStatusTask.status)}
                   </span>
                 </div>
               </div>
 
               <div>
                 <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">
-                  {language === 'VI' ? 'Nội dung ghi chú / Lý do nghẽn' : 'Notes / Delay Reasons'}
+                  {language === 'VI' ? 'Ghi chú cập nhật (VD: đã điền file, lý do chậm...)' : 'Update notes (e.g. files submitted, delay reason...)'}
                 </label>
                 <textarea
                   className="w-full text-xs p-2 bg-cj-gray-50 border border-cj-gray-200 rounded-lg focus:bg-white focus:border-cj-red outline-none transition-all font-normal"
                   rows={4}
-                  placeholder={isReadOnly ? 'No status notes entered yet.' : (language === 'VI' ? 'Nhập lý do nghẽn tiến độ hoặc chi tiết phê duyệt...' : 'Describe bottleneck or pending review details...')}
+                  placeholder={isReadOnly ? (language === 'VI' ? 'Chưa có ghi chú nào.' : 'No status notes entered yet.') : (language === 'VI' ? 'VD: Đã điền thêm file X, Y. Đang chờ duyệt từ PM...' : 'E.g. Submitted file X, Y. Waiting for PM approval...')}
                   readOnly={isReadOnly}
                   value={statusNoteText}
                   onChange={(e) => setStatusNoteText(e.target.value)}
