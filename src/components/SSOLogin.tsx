@@ -35,14 +35,23 @@ export default function SSOLogin() {
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      setStep(2); // proceed to MFA
+      // MFA is temporarily disabled/bypassed for the default project (B2B DMS) during initial login
+      setCurrentUser(matchedUser);
+      setIsLoggedIn(true);
     }, 1200);
   };
 
   const handleMfaSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setError('');
 
+    // Require the correct code '123456' to login if step 2 is triggered
+    if (mfaCode !== '123456') {
+      setError('Incorrect MFA verification code. Access denied.');
+      return;
+    }
+
+    setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
       const matchedUser = mockUsers.find(
@@ -174,15 +183,22 @@ export default function SSOLogin() {
                   Verification Code
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   maxLength={6}
                   required
-                  placeholder="123456"
+                  placeholder="••••••"
                   className="w-32 mx-auto text-center tracking-widest text-lg font-bold px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-cj-red/20 focus:border-cj-red outline-none transition-all block"
                   value={mfaCode}
                   onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
                 />
               </div>
+
+              {error && (
+                <div className="flex items-center space-x-2 p-3 bg-red-50 rounded-lg text-xs text-red-600 border border-red-100">
+                  <ShieldAlert className="h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
 
               <button
                 type="submit"

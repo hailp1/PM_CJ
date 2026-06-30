@@ -31,6 +31,10 @@ export default function Header() {
   
   // New Project Modal States
   const [showNewProjModal, setShowNewProjModal] = useState(false);
+  const [showMfaModal, setShowMfaModal] = useState(false);
+  const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
+  const [headerMfaCode, setHeaderMfaCode] = useState('');
+  const [mfaError, setMfaError] = useState('');
   const [newProjCode, setNewProjCode] = useState('CJ-DMS-EXP');
   const [newProjName, setNewProjName] = useState('Dự án mở rộng bán hàng');
   const [newProjPmId, setNewProjPmId] = useState('u3'); // default Lê Phúc Hải
@@ -118,7 +122,17 @@ export default function Header() {
             <select
               className="pl-2 pr-7 py-1 bg-cj-gray-100/60 hover:bg-cj-gray-100 border-0 rounded-lg text-xs sm:text-sm font-semibold text-cj-gray-800 focus:ring-2 focus:ring-cj-red/10 outline-none transition-all cursor-pointer appearance-none max-w-[120px] xs:max-w-[160px] sm:max-w-[280px] truncate"
               value={activeProjectId}
-              onChange={(e) => setActiveProjectId(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'p1') {
+                  setActiveProjectId('p1');
+                } else {
+                  setPendingProjectId(val);
+                  setHeaderMfaCode('');
+                  setMfaError('');
+                  setShowMfaModal(true);
+                }
+              }}
             >
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -401,6 +415,71 @@ export default function Header() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* MFA Project Verification Modal */}
+      {showMfaModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-lg border border-cj-gray-200 max-w-sm w-full overflow-hidden animate-scale-in p-6 space-y-4">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-cj-red/5 flex items-center justify-center mx-auto text-cj-red">
+                <Shield className="h-6 w-6" />
+              </div>
+              <h3 className="text-sm font-bold text-cj-gray-800 uppercase tracking-wider">
+                {language === 'VI' ? 'Xác thực bảo mật MFA' : 'MFA Security Verification'}
+              </h3>
+              <p className="text-[11px] text-gray-500">
+                {language === 'VI' 
+                  ? 'Vui lòng nhập mã bảo mật 6 số của bạn để truy cập dự án quản trị này.' 
+                  : 'Please enter your 6-digit MFA verification code to access this restricted project.'}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <input
+                type="password"
+                maxLength={6}
+                required
+                placeholder="••••••"
+                className="w-36 mx-auto text-center tracking-widest text-lg font-bold px-3 py-2 bg-cj-gray-50 border border-cj-gray-200 rounded-lg focus:ring-2 focus:ring-cj-red/20 focus:border-cj-red outline-none transition-all block"
+                value={headerMfaCode}
+                onChange={(e) => setHeaderMfaCode(e.target.value.replace(/\D/g, ''))}
+              />
+
+              {mfaError && (
+                <p className="text-center text-xs text-cj-red font-bold animate-pulse">
+                  ❌ {mfaError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowMfaModal(false)}
+                className="flex-1 py-2 bg-cj-gray-100 hover:bg-cj-gray-200 text-cj-gray-700 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (headerMfaCode === '123456') {
+                    if (pendingProjectId) {
+                      setActiveProjectId(pendingProjectId);
+                    }
+                    setShowMfaModal(false);
+                  } else {
+                    setMfaError(language === 'VI' ? 'Mã xác thực không chính xác.' : 'Incorrect MFA code.');
+                  }
+                }}
+                className="flex-1 py-2 bg-cj-blue hover:bg-cj-blue/90 text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+              >
+                {language === 'VI' ? 'Xác nhận' : 'Verify'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </header>
