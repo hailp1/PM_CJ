@@ -58,6 +58,11 @@ export default function WBSView() {
   const [filterPicId, setFilterPicId] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
 
+  // Status Note States
+  const [showStatusNoteModal, setShowStatusNoteModal] = useState(false);
+  const [selectedStatusTask, setSelectedStatusTask] = useState<Task | null>(null);
+  const [statusNoteText, setStatusNoteText] = useState('');
+
   const activeProject = projects.find(p => p.id === activeProjectId) || projects[0];
   const projectTasks = React.useMemo(() => tasks.filter((t) => t.projectId === activeProjectId), [tasks, activeProjectId]);
 
@@ -493,8 +498,20 @@ export default function WBSView() {
           </td>
           <td className="px-3 py-3.5 text-xs font-black text-center text-cj-blue">{task.progress}%</td>
           <td className="px-3 py-3.5 text-xs text-center">
-            <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase ${getStatusStyle(task.status)}`}>
-              {getStatusDisplay(task.status)}
+            <span 
+              onClick={() => {
+                if (task.status === 'Blocked' || task.status === 'Review' || task.status === 'Planning') {
+                  setSelectedStatusTask(task);
+                  setStatusNoteText((task as any).statusNote || '');
+                  setShowStatusNoteModal(true);
+                }
+              }}
+              className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full font-bold text-[10px] uppercase transition-all hover:scale-105 ${
+                (task.status === 'Blocked' || task.status === 'Review' || task.status === 'Planning') ? 'cursor-pointer hover:opacity-90' : ''
+              } ${getStatusStyle(task.status)}`}
+            >
+              <span>{getStatusDisplay(task.status)}</span>
+              {(task as any).statusNote && <span className="w-1.5 h-1.5 bg-cj-red rounded-full animate-pulse" />}
             </span>
           </td>
           <td className="px-3 py-3.5 text-xs text-center">
@@ -633,8 +650,20 @@ export default function WBSView() {
           </div>
 
           <div className="flex justify-between items-center pt-2 border-t border-cj-gray-100 text-[10px]">
-            <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] uppercase ${getStatusStyle(task.status)}`}>
-              {getStatusDisplay(task.status)}
+            <span 
+              onClick={() => {
+                if (task.status === 'Blocked' || task.status === 'Review' || task.status === 'Planning') {
+                  setSelectedStatusTask(task);
+                  setStatusNoteText((task as any).statusNote || '');
+                  setShowStatusNoteModal(true);
+                }
+              }}
+              className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded-full font-bold text-[9px] uppercase transition-all hover:scale-105 ${
+                (task.status === 'Blocked' || task.status === 'Review' || task.status === 'Planning') ? 'cursor-pointer hover:opacity-90' : ''
+              } ${getStatusStyle(task.status)}`}
+            >
+              <span>{getStatusDisplay(task.status)}</span>
+              {(task as any).statusNote && <span className="w-1 h-1 bg-cj-red rounded-full animate-pulse" />}
             </span>
 
             {!isReadOnly && (
@@ -1120,6 +1149,88 @@ export default function WBSView() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Task Status Blocker/Pending Note Modal */}
+      {showStatusNoteModal && selectedStatusTask && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-lg border border-cj-gray-200 max-w-sm w-full overflow-hidden animate-scale-in p-5 space-y-4">
+            <div className="flex justify-between items-center border-b pb-2">
+              <span className="font-bold text-xs text-cj-gray-800 uppercase tracking-wider">
+                {language === 'VI' ? 'Ghi chú Trạng thái' : 'Status Notes'}
+              </span>
+              <button 
+                type="button" 
+                onClick={() => setShowStatusNoteModal(false)} 
+                className="text-gray-400 hover:text-cj-red transition-all cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs font-semibold text-cj-gray-800">
+              <div>
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Task Title</span>
+                <p className="text-xs font-bold text-cj-gray-800 mt-0.5">{selectedStatusTask.title}</p>
+              </div>
+
+              <div>
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Current Status</span>
+                <div className="mt-1">
+                  <span className={`px-2.5 py-0.5 rounded-full font-bold text-[9px] uppercase ${
+                    selectedStatusTask.status === 'Blocked' ? 'bg-red-100 text-red-600' : 'bg-cj-orange/10 text-cj-orange'
+                  }`}>
+                    {selectedStatusTask.status === 'Blocked' ? (language === 'VI' ? 'Bị nghẽn' : 'Blocked') : (language === 'VI' ? 'Đang duyệt / Pending' : 'Review / Pending')}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">
+                  {language === 'VI' ? 'Nội dung ghi chú / Lý do nghẽn' : 'Notes / Delay Reasons'}
+                </label>
+                <textarea
+                  className="w-full text-xs p-2 bg-cj-gray-50 border border-cj-gray-200 rounded-lg focus:bg-white focus:border-cj-red outline-none transition-all font-normal"
+                  rows={4}
+                  placeholder={isReadOnly ? 'No status notes entered yet.' : (language === 'VI' ? 'Nhập lý do nghẽn tiến độ hoặc chi tiết phê duyệt...' : 'Describe bottleneck or pending review details...')}
+                  readOnly={isReadOnly}
+                  value={statusNoteText}
+                  onChange={(e) => setStatusNoteText(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowStatusNoteModal(false)}
+                className="flex-1 py-1.5 bg-cj-gray-100 hover:bg-cj-gray-200 text-cj-gray-700 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+              >
+                {isReadOnly ? 'Close' : t('cancel')}
+              </button>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTasks((prev) =>
+                      prev.map((t) =>
+                        t.id === selectedStatusTask.id
+                          ? { ...t, statusNote: statusNoteText } as any
+                          : t
+                      )
+                    );
+                    setShowStatusNoteModal(false);
+                    logAction(activeProjectId, `Updated status note for "${selectedStatusTask.title}": "${statusNoteText}"`);
+                    addNotification(language === 'VI' ? `Đã cập nhật ghi chú của "${selectedStatusTask.title}"` : `Updated status notes for "${selectedStatusTask.title}"`, 'issue');
+                  }}
+                  className="flex-1 py-1.5 bg-cj-blue hover:bg-cj-blue/90 text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  {language === 'VI' ? 'Lưu ghi chú' : 'Save Notes'}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
