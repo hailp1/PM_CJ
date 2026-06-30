@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   User,
   Project,
@@ -24,6 +24,7 @@ import {
   mockAuditLogs
 } from '../data/mockData';
 import { translations } from '../data/translations';
+import { supabase, isSupabaseConfigured } from '@/lib/supabaseClient';
 
 interface AppContextType {
   currentUser: User;
@@ -84,40 +85,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     { id: 'n3', text: 'Issue ISS-001: Connection failure at Hiep Phuoc warehouse reported', time: '2h ago', read: true, type: 'issue' }
   ]);
 
-  // Load state from localStorage on mount
+  // Load state on mount (Supabase or localStorage)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const initData = async () => {
+      if (isSupabaseConfigured()) {
+        try {
+          console.log('Supabase detected! Loading real-time database state...');
+          
+          const { data: projData } = await supabase.from('projects').select('*');
+          if (projData && projData.length > 0) setProjects(projData);
+
+          const { data: taskData } = await supabase.from('tasks').select('*');
+          if (taskData) setTasks(taskData);
+
+          const { data: riskData } = await supabase.from('risks').select('*');
+          if (riskData) setRisks(riskData);
+
+          const { data: resData } = await supabase.from('resources').select('*');
+          if (resData && resData.length > 0) setResources(resData);
+
+          const { data: crData } = await supabase.from('change_requests').select('*');
+          if (crData) setChangeRequests(crData);
+
+          const { data: docData } = await supabase.from('documents').select('*');
+          if (docData) setDocuments(docData);
+
+          const { data: meetData } = await supabase.from('meetings').select('*');
+          if (meetData) setMeetings(meetData);
+
+        } catch (err) {
+          console.error('Failed to load from Supabase:', err);
+        }
+      } else {
+        // Fallback to localStorage
+        try {
+          const storedProjects = localStorage.getItem('cj_projects');
+          if (storedProjects) setProjects(JSON.parse(storedProjects));
+          
+          const storedTasks = localStorage.getItem('cj_tasks');
+          if (storedTasks) setTasks(JSON.parse(storedTasks));
+
+          const { data: riskData } = await supabase.from('risks').select('*');
+          const storedRisks = localStorage.getItem('cj_risks');
+          if (storedRisks) setRisks(JSON.parse(storedRisks));
+
+          const storedIssues = localStorage.getItem('cj_issues');
+          if (storedIssues) setIssues(JSON.parse(storedIssues));
+
+          const storedCR = localStorage.getItem('cj_changeRequests');
+          if (storedCR) setChangeRequests(JSON.parse(storedCR));
+
+          const storedDocs = localStorage.getItem('cj_documents');
+          if (storedDocs) setDocuments(JSON.parse(storedDocs));
+
+          const storedMeetings = localStorage.getItem('cj_meetings');
+          if (storedMeetings) setMeetings(JSON.parse(storedMeetings));
+
+          const storedResources = localStorage.getItem('cj_resources');
+          if (storedResources) setResources(JSON.parse(storedResources));
+
+          const storedLogs = localStorage.getItem('cj_auditLogs');
+          if (storedLogs) setAuditLogs(JSON.parse(storedLogs));
+        } catch (err) {
+          console.error('Error loading config from localStorage:', err);
+        }
+      }
+
+      // Local session states
       try {
-        const storedProjects = localStorage.getItem('cj_projects');
-        if (storedProjects) setProjects(JSON.parse(storedProjects));
-        
-        const storedTasks = localStorage.getItem('cj_tasks');
-        if (storedTasks) setTasks(JSON.parse(storedTasks));
-
-        const storedRisks = localStorage.getItem('cj_risks');
-        if (storedRisks) setRisks(JSON.parse(storedRisks));
-
-        const storedIssues = localStorage.getItem('cj_issues');
-        if (storedIssues) setIssues(JSON.parse(storedIssues));
-
-        const storedCR = localStorage.getItem('cj_changeRequests');
-        if (storedCR) setChangeRequests(JSON.parse(storedCR));
-
-        const storedDocs = localStorage.getItem('cj_documents');
-        if (storedDocs) setDocuments(JSON.parse(storedDocs));
-
-        const storedMeetings = localStorage.getItem('cj_meetings');
-        if (storedMeetings) setMeetings(JSON.parse(storedMeetings));
-
-        const storedResources = localStorage.getItem('cj_resources');
-        if (storedResources) setResources(JSON.parse(storedResources));
-
-        const storedLogs = localStorage.getItem('cj_auditLogs');
-        if (storedLogs) setAuditLogs(JSON.parse(storedLogs));
-
-        const storedNotifications = localStorage.getItem('cj_notifications');
-        if (storedNotifications) setNotifications(JSON.parse(storedNotifications));
-
         const storedUser = localStorage.getItem('cj_currentUser');
         if (storedUser) setCurrentUser(JSON.parse(storedUser));
 
@@ -126,90 +161,148 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const storedLang = localStorage.getItem('cj_language') as 'EN' | 'VI' | 'KO';
         if (storedLang) setLanguage(storedLang);
-      } catch (err) {
-        console.error('Error restoring localStorage config: ', err);
+
+        const storedNotifications = localStorage.getItem('cj_notifications');
+        if (storedNotifications) setNotifications(JSON.parse(storedNotifications));
+      } catch (e) {
+        console.error('Session load error:', e);
       }
-    }
+    };
+
+    initData();
   }, []);
 
-  // Save states to localStorage whenever they change
+  // Save states to local/Supabase database on change
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isSupabaseConfigured()) {
+      supabase.from('projects').upsert(projects).then(({ error }) => {
+        if (error) console.error('Error upserting projects:', error);
+      });
+    } else {
       localStorage.setItem('cj_projects', JSON.stringify(projects));
     }
   }, [projects]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isSupabaseConfigured()) {
+      supabase.from('tasks').upsert(tasks).then(({ error }) => {
+        if (error) console.error('Error upserting tasks:', error);
+      });
+    } else {
       localStorage.setItem('cj_tasks', JSON.stringify(tasks));
     }
   }, [tasks]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isSupabaseConfigured()) {
+      supabase.from('risks').upsert(risks).then(({ error }) => {
+        if (error) console.error('Error upserting risks:', error);
+      });
+    } else {
       localStorage.setItem('cj_risks', JSON.stringify(risks));
     }
   }, [risks]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cj_issues', JSON.stringify(issues));
-    }
+    localStorage.setItem('cj_issues', JSON.stringify(issues));
   }, [issues]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isSupabaseConfigured()) {
+      supabase.from('change_requests').upsert(changeRequests).then(({ error }) => {
+        if (error) console.error('Error upserting changeRequests:', error);
+      });
+    } else {
       localStorage.setItem('cj_changeRequests', JSON.stringify(changeRequests));
     }
   }, [changeRequests]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isSupabaseConfigured()) {
+      supabase.from('documents').upsert(documents).then(({ error }) => {
+        if (error) console.error('Error upserting documents:', error);
+      });
+    } else {
       localStorage.setItem('cj_documents', JSON.stringify(documents));
     }
   }, [documents]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isSupabaseConfigured()) {
+      supabase.from('meetings').upsert(meetings).then(({ error }) => {
+        if (error) console.error('Error upserting meetings:', error);
+      });
+    } else {
       localStorage.setItem('cj_meetings', JSON.stringify(meetings));
     }
   }, [meetings]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isSupabaseConfigured()) {
+      supabase.from('resources').upsert(resources).then(({ error }) => {
+        if (error) console.error('Error upserting resources:', error);
+      });
+    } else {
       localStorage.setItem('cj_resources', JSON.stringify(resources));
     }
   }, [resources]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cj_auditLogs', JSON.stringify(auditLogs));
-    }
+    localStorage.setItem('cj_auditLogs', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cj_notifications', JSON.stringify(notifications));
-    }
+    localStorage.setItem('cj_notifications', JSON.stringify(notifications));
   }, [notifications]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cj_currentUser', JSON.stringify(currentUser));
-    }
+    localStorage.setItem('cj_currentUser', JSON.stringify(currentUser));
   }, [currentUser]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cj_isLoggedIn', JSON.stringify(isLoggedIn));
-    }
+    localStorage.setItem('cj_isLoggedIn', JSON.stringify(isLoggedIn));
   }, [isLoggedIn]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('cj_language', language);
-    }
+    localStorage.setItem('cj_language', language);
   }, [language]);
+
+  // Synchronize deletions (UX Upgrades)
+  const prevTasksRef = useRef<Task[]>(tasks);
+  useEffect(() => {
+    if (isSupabaseConfigured() && prevTasksRef.current.length > tasks.length) {
+      const currentIds = new Set(tasks.map(t => t.id));
+      const deleted = prevTasksRef.current.filter(t => !currentIds.has(t.id));
+      deleted.forEach(async (t) => {
+        await supabase.from('tasks').delete().eq('id', t.id);
+      });
+    }
+    prevTasksRef.current = tasks;
+  }, [tasks]);
+
+  const prevProjectsRef = useRef<Project[]>(projects);
+  useEffect(() => {
+    if (isSupabaseConfigured() && prevProjectsRef.current.length > projects.length) {
+      const currentIds = new Set(projects.map(p => p.id));
+      const deleted = prevProjectsRef.current.filter(p => !currentIds.has(p.id));
+      deleted.forEach(async (p) => {
+        await supabase.from('projects').delete().eq('id', p.id);
+      });
+    }
+    prevProjectsRef.current = projects;
+  }, [projects]);
+
+  const prevRisksRef = useRef<Risk[]>(risks);
+  useEffect(() => {
+    if (isSupabaseConfigured() && prevRisksRef.current.length > risks.length) {
+      const currentIds = new Set(risks.map(r => r.id));
+      const deleted = prevRisksRef.current.filter(r => !currentIds.has(r.id));
+      deleted.forEach(async (r) => {
+        await supabase.from('risks').delete().eq('id', r.id);
+      });
+    }
+    prevRisksRef.current = risks;
+  }, [risks]);
 
   const addNotification = (text: string, type: string) => {
     const newNotif = {
