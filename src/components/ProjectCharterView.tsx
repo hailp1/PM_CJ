@@ -5,7 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { Target, HelpCircle, Shield, Flag, Compass, Calendar, DollarSign, Edit3, Save } from 'lucide-react';
 
 export default function ProjectCharterView() {
-  const { projects, activeProjectId, setProjects, currentUser, logAction } = useApp();
+  const { projects, activeProjectId, setProjects, currentUser, logAction, t, language } = useApp();
   const [isEditing, setIsEditing] = useState(false);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0];
@@ -66,16 +66,63 @@ export default function ProjectCharterView() {
 
   const isReadOnly = currentUser.role === 'Viewer';
 
+  // Translate priorities
+  const getPriorityText = (prio: string) => {
+    if (language === 'VI') {
+      if (prio === 'Critical') return 'Khẩn cấp';
+      if (prio === 'High') return 'Cao';
+      if (prio === 'Medium') return 'Trung bình';
+      if (prio === 'Low') return 'Thấp';
+    }
+    if (language === 'KO') {
+      if (prio === 'Critical') return '최우선';
+      if (prio === 'High') return '높음';
+      if (prio === 'Medium') return '보통';
+      if (prio === 'Low') return '낮음';
+    }
+    return prio;
+  };
+
+  const getRiskText = (risk: string) => {
+    if (language === 'VI') {
+      if (risk === 'High') return 'Cao';
+      if (risk === 'Medium') return 'Trung bình';
+      if (risk === 'Low') return 'Thấp';
+    }
+    if (language === 'KO') {
+      if (risk === 'High') return '높음';
+      if (risk === 'Medium') return '보통';
+      if (risk === 'Low') return '낮음';
+    }
+    return risk;
+  };
+
+  const getStrategicAlignmentText = (align: string) => {
+    if (language === 'VI') {
+      if (align === 'Digital Acceleration') return 'Tăng tốc số hóa';
+      if (align === 'Market Leadership') return 'Dẫn đầu thị trường';
+      if (align === 'Cost Optimization') return 'Tối ưu hóa chi phí';
+      if (align === 'Product Innovation') return 'Đổi mới sản phẩm';
+    }
+    if (language === 'KO') {
+      if (align === 'Digital Acceleration') return '디지털 가속화';
+      if (align === 'Market Leadership') return '시장 리더십';
+      if (align === 'Cost Optimization') return '비용 최적화';
+      if (align === 'Product Innovation') return '제품 혁신';
+    }
+    return align;
+  };
+
   return (
-    <div className="space-y-6 p-6 overflow-y-auto h-[calc(100vh-64px)] w-full">
+    <div className="space-y-6 p-6 overflow-y-auto h-[calc(100vh-64px)] w-full select-none">
       {/* Title Header */}
       <div className="flex justify-between items-center border-b border-cj-gray-200 pb-4">
         <div>
           <span className="text-[10px] text-cj-red font-bold uppercase tracking-wider block bg-cj-red/5 px-2 py-0.5 rounded-full w-max">
-            PMBOK Initiating Phase
+            {language === 'VI' ? 'PMBOK Khởi động' : (language === 'KO' ? 'PMBOK 착수 단계' : 'PMBOK Initiating Phase')}
           </span>
-          <h1 className="text-xl font-extrabold text-cj-gray-800 mt-1">Official Project Charter</h1>
-          <p className="text-xs text-gray-500">Official statement authorization charter aligning project objective to CJ strategic initiatives.</p>
+          <h1 className="text-xl font-extrabold text-cj-gray-800 mt-1">{t('charter_title')}</h1>
+          <p className="text-xs text-gray-500">{t('charter_desc')}</p>
         </div>
 
         {!isReadOnly && (
@@ -86,7 +133,7 @@ export default function ProjectCharterView() {
                 className="flex items-center space-x-1.5 px-3 py-1.5 bg-cj-blue hover:bg-cj-blue/90 text-white rounded-lg text-xs font-semibold shadow-sm cursor-pointer transition-colors"
               >
                 <Save className="h-4 w-4" />
-                <span>Save Charter</span>
+                <span>{t('charter_save')}</span>
               </button>
             ) : (
               <button
@@ -94,7 +141,7 @@ export default function ProjectCharterView() {
                 className="flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-cj-gray-200 hover:bg-cj-gray-100 text-cj-gray-800 rounded-lg text-xs font-semibold shadow-sm cursor-pointer transition-colors"
               >
                 <Edit3 className="h-4 w-4" />
-                <span>Edit Charter</span>
+                <span>{t('charter_edit')}</span>
               </button>
             )}
           </div>
@@ -111,7 +158,7 @@ export default function ProjectCharterView() {
           <div className="bg-white p-5 rounded-2xl border border-cj-gray-200 shadow-soft space-y-4">
             <h3 className="text-xs font-black text-cj-gray-800 uppercase tracking-wider flex items-center">
               <Target className="h-4.5 w-4.5 text-cj-blue mr-2" />
-              <span>Project Objective & Objectives</span>
+              <span>{t('charter_obj')}</span>
             </h3>
             {isEditing ? (
               <textarea
@@ -127,7 +174,7 @@ export default function ProjectCharterView() {
 
             <h3 className="text-xs font-black text-cj-gray-800 uppercase tracking-wider flex items-center pt-2">
               <HelpCircle className="h-4.5 w-4.5 text-cj-orange mr-2" />
-              <span>Business Justification</span>
+              <span>{t('charter_just')}</span>
             </h3>
             {isEditing ? (
               <textarea
@@ -147,7 +194,7 @@ export default function ProjectCharterView() {
             <div>
               <h3 className="text-xs font-black text-cj-gray-800 uppercase tracking-wider flex items-center mb-2">
                 <span className="w-1.5 h-3 bg-cj-blue rounded mr-2" />
-                <span>In Scope Statement</span>
+                <span>{t('charter_scope')}</span>
               </h3>
               {isEditing ? (
                 <textarea
@@ -165,7 +212,7 @@ export default function ProjectCharterView() {
             <div>
               <h3 className="text-xs font-black text-cj-gray-800 uppercase tracking-wider flex items-center mb-2">
                 <span className="w-1.5 h-3 bg-cj-red rounded mr-2" />
-                <span>Out of Scope Statement</span>
+                <span>{t('charter_out')}</span>
               </h3>
               {isEditing ? (
                 <textarea
@@ -186,20 +233,20 @@ export default function ProjectCharterView() {
         <div className="space-y-6">
           {/* Alignment card */}
           <div className="bg-white p-5 rounded-2xl border border-cj-gray-200 shadow-soft space-y-4">
-            <h3 className="text-xs font-black text-cj-gray-800 uppercase tracking-wider">Strategic Alignment</h3>
+            <h3 className="text-xs font-black text-cj-gray-800 uppercase tracking-wider">{t('charter_align')}</h3>
             
             <div className="space-y-3 text-xs">
               
               <div className="flex items-center justify-between p-2.5 bg-cj-gray-100/40 rounded-xl">
                 <span className="flex items-center font-bold text-gray-500">
                   <Compass className="h-4 w-4 text-cj-blue mr-2" />
-                  Alignment Pillar
+                  {language === 'VI' ? 'Cột trụ chiến lược' : (language === 'KO' ? '전략적 기둥' : 'Alignment Pillar')}
                 </span>
                 {isEditing ? (
                   <select
                     value={alignment}
                     onChange={(e) => setAlignment(e.target.value as any)}
-                    className="p-1 text-xs border rounded cursor-pointer"
+                    className="p-1 text-xs border rounded cursor-pointer outline-none"
                   >
                     <option value="Market Leadership">Market Leadership</option>
                     <option value="Cost Optimization">Cost Optimization</option>
@@ -208,7 +255,7 @@ export default function ProjectCharterView() {
                   </select>
                 ) : (
                   <span className="font-extrabold text-cj-blue bg-cj-blue/5 px-2 py-0.5 rounded">
-                    {activeProject.strategicAlignment}
+                    {getStrategicAlignmentText(activeProject.strategicAlignment)}
                   </span>
                 )}
               </div>
@@ -216,13 +263,13 @@ export default function ProjectCharterView() {
               <div className="flex items-center justify-between p-2.5 bg-cj-gray-100/40 rounded-xl">
                 <span className="flex items-center font-bold text-gray-500">
                   <Flag className="h-4 w-4 text-cj-red mr-2" />
-                  Project Priority
+                  {language === 'VI' ? 'Độ ưu tiên' : (language === 'KO' ? '우선순위' : 'Project Priority')}
                 </span>
                 {isEditing ? (
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as any)}
-                    className="p-1 text-xs border rounded cursor-pointer"
+                    className="p-1 text-xs border rounded cursor-pointer outline-none"
                   >
                     <option value="Low">Low</option>
                     <option value="Medium">Medium</option>
@@ -237,7 +284,7 @@ export default function ProjectCharterView() {
                       ? 'bg-orange-100 text-orange-700'
                       : 'bg-cj-blue/5 text-cj-blue'
                   }`}>
-                    {activeProject.priority}
+                    {getPriorityText(activeProject.priority)}
                   </span>
                 )}
               </div>
@@ -245,13 +292,13 @@ export default function ProjectCharterView() {
               <div className="flex items-center justify-between p-2.5 bg-cj-gray-100/40 rounded-xl">
                 <span className="flex items-center font-bold text-gray-500">
                   <Shield className="h-4 w-4 text-cj-orange mr-2" />
-                  Risk Profile
+                  {language === 'VI' ? 'Độ rủi ro' : (language === 'KO' ? '리스크 프로필' : 'Risk Profile')}
                 </span>
                 {isEditing ? (
                   <select
                     value={riskLevel}
                     onChange={(e) => setRiskLevel(e.target.value as any)}
-                    className="p-1 text-xs border rounded cursor-pointer"
+                    className="p-1 text-xs border rounded cursor-pointer outline-none"
                   >
                     <option value="Low">Low</option>
                     <option value="Medium">Medium</option>
@@ -263,7 +310,7 @@ export default function ProjectCharterView() {
                       ? 'bg-red-50 text-cj-red font-bold' 
                       : 'bg-green-50 text-green-700'
                   }`}>
-                    {activeProject.riskLevel}
+                    {getRiskText(activeProject.riskLevel)}
                   </span>
                 )}
               </div>
@@ -272,13 +319,13 @@ export default function ProjectCharterView() {
 
           {/* Project Cost & Schedule */}
           <div className="bg-white p-5 rounded-2xl border border-cj-gray-200 shadow-soft space-y-4">
-            <h3 className="text-xs font-black text-cj-gray-800 uppercase tracking-wider">Timeline & Financial limits</h3>
+            <h3 className="text-xs font-black text-cj-gray-800 uppercase tracking-wider">{t('charter_dates')}</h3>
             
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between p-2.5 bg-cj-gray-100/40 rounded-xl">
                 <span className="flex items-center font-bold text-gray-500">
                   <Calendar className="h-4 w-4 text-gray-400 mr-2" />
-                  Schedule Range
+                  {language === 'VI' ? 'Thời gian triển khai' : (language === 'KO' ? '일정 범위' : 'Schedule Range')}
                 </span>
                 <span className="font-extrabold text-cj-gray-800">
                   {activeProject.startDate} ~ {activeProject.endDate}
@@ -288,35 +335,24 @@ export default function ProjectCharterView() {
               <div className="flex items-center justify-between p-2.5 bg-cj-gray-100/40 rounded-xl">
                 <span className="flex items-center font-bold text-gray-500">
                   <DollarSign className="h-4 w-4 text-green-500 mr-2" />
-                  Total Budget BAC
+                  {language === 'VI' ? 'Tổng ngân sách BAC' : (language === 'KO' ? '총 예산 BAC' : 'Total Budget BAC')}
                 </span>
                 {isEditing ? (
                   <input
                     type="number"
                     value={budget}
                     onChange={(e) => setBudget(Number(e.target.value))}
-                    className="p-1 text-xs border rounded w-24 text-right"
+                    className="p-1 text-xs border rounded w-24 text-right outline-none"
                   />
                 ) : (
-                  <span className="font-extrabold text-green-600">
+                  <span className="font-extrabold text-green-600 bg-green-50 px-2 py-0.5 rounded">
                     {(activeProject.budget).toLocaleString()}M VND
                   </span>
                 )}
               </div>
-
-              <div className="flex items-center justify-between p-2.5 bg-cj-gray-100/40 rounded-xl">
-                <span className="flex items-center font-bold text-gray-500">
-                  <DollarSign className="h-4 w-4 text-cj-red mr-2" />
-                  Actual Cost AC
-                </span>
-                <span className="font-extrabold text-cj-red">
-                  {(activeProject.actualCost).toLocaleString()}M VND
-                </span>
-              </div>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

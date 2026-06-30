@@ -23,6 +23,7 @@ import {
   mockResourceAllocations,
   mockAuditLogs
 } from '../data/mockData';
+import { translations } from '../data/translations';
 
 interface AppContextType {
   currentUser: User;
@@ -53,13 +54,16 @@ interface AppContextType {
   logAction: (projectId: string, action: string, fieldName?: string, oldValue?: string, newValue?: string) => void;
   isLoggedIn: boolean;
   setIsLoggedIn: (val: boolean) => void;
+  language: 'EN' | 'VI' | 'KO';
+  setLanguage: (lang: 'EN' | 'VI' | 'KO') => void;
+  t: (key: string) => string;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<User>(mockUsers[0]); // default Shin Jae Ho (Admin)
+  const [currentUser, setCurrentUser] = useState<User>(mockUsers[0]);
   const [projects, setProjects] = useState<Project[]>(mockProjects);
   const [activeProjectId, setActiveProjectId] = useState<string>('p1');
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
@@ -70,13 +74,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [meetings, setMeetings] = useState<Meeting[]>(mockMeetings);
   const [resources, setResources] = useState<ResourceAllocation[]>(mockResourceAllocations);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(mockAuditLogs);
+  const [language, setLanguage] = useState<'EN' | 'VI' | 'KO'>('EN');
 
   const [notifications, setNotifications] = useState<
     { id: string; text: string; time: string; read: boolean; type: string }[]
   >([
-    { id: 'n1', text: 'Nguyen Thi Mai requested review on Artwork V4', time: '10m ago', read: false, type: 'approval' },
-    { id: 'n2', text: 'CJ Bibigo Launch - Sensory Panel testing milestone is 100% complete', time: '1h ago', read: false, type: 'milestone' },
-    { id: 'n3', text: 'Issue ISS-002: Production line trial scheduling conflict reported', time: '2h ago', read: true, type: 'issue' }
+    { id: 'n1', text: 'Ms. Hương requested review on Artwork V4', time: '10m ago', read: false, type: 'approval' },
+    { id: 'n2', text: 'Dự án DMS B2B - Import MCP milestone is 100% complete', time: '1h ago', read: false, type: 'milestone' },
+    { id: 'n3', text: 'Issue ISS-001: Connection failure at Hiep Phuoc warehouse reported', time: '2h ago', read: true, type: 'issue' }
   ]);
 
   // Load state from localStorage on mount
@@ -104,6 +109,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const storedMeetings = localStorage.getItem('cj_meetings');
         if (storedMeetings) setMeetings(JSON.parse(storedMeetings));
 
+        const storedResources = localStorage.getItem('cj_resources');
+        if (storedResources) setResources(JSON.parse(storedResources));
+
         const storedLogs = localStorage.getItem('cj_auditLogs');
         if (storedLogs) setAuditLogs(JSON.parse(storedLogs));
 
@@ -115,6 +123,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         const storedLogin = localStorage.getItem('cj_isLoggedIn');
         if (storedLogin) setIsLoggedIn(JSON.parse(storedLogin));
+
+        const storedLang = localStorage.getItem('cj_language') as 'EN' | 'VI' | 'KO';
+        if (storedLang) setLanguage(storedLang);
       } catch (err) {
         console.error('Error restoring localStorage config: ', err);
       }
@@ -166,6 +177,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      localStorage.setItem('cj_resources', JSON.stringify(resources));
+    }
+  }, [resources]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
       localStorage.setItem('cj_auditLogs', JSON.stringify(auditLogs));
     }
   }, [auditLogs]);
@@ -187,6 +204,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem('cj_isLoggedIn', JSON.stringify(isLoggedIn));
     }
   }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cj_language', language);
+    }
+  }, [language]);
 
   const addNotification = (text: string, type: string) => {
     const newNotif = {
@@ -239,6 +262,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [tasks]);
 
+  const t = (key: string): string => {
+    const langDict = translations[language] || translations.EN;
+    return (langDict as any)[key] || (translations.EN as any)[key] || key;
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -269,7 +297,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markNotificationsRead,
         logAction,
         isLoggedIn,
-        setIsLoggedIn
+        setIsLoggedIn,
+        language,
+        setLanguage,
+        t
       }}
     >
       {children}

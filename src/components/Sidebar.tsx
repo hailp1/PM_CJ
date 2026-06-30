@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useApp } from '@/context/AppContext';
 import {
   LayoutDashboard,
   FileText,
@@ -22,37 +23,39 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+  const { t } = useApp();
+
   const menuGroups = [
     {
-      title: 'Core Portfolio',
+      title: t('menu_dashboard') === 'Dashboard' ? 'Core Portfolio' : (t('menu_dashboard') === 'Bảng Điều khiển' ? 'Danh mục cốt lõi' : '핵심 포트폴리오'),
       items: [
-        { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard },
-        { id: 'charter', label: 'Project Charter', icon: FileText },
-        { id: 'documents', label: 'Docs & Meetings', icon: FolderLock }
+        { id: 'dashboard', label: t('menu_dashboard'), icon: LayoutDashboard },
+        { id: 'charter', label: t('menu_charter'), icon: FileText },
+        { id: 'documents', label: t('menu_docs'), icon: FolderLock }
       ]
     },
     {
-      title: 'PMBOK Scheduling',
+      title: t('menu_dashboard') === 'Dashboard' ? 'PMBOK Scheduling' : (t('menu_dashboard') === 'Bảng Điều khiển' ? 'Kế hoạch PMBOK' : 'PMBOK 일정 관리'),
       items: [
-        { id: 'tasks', label: 'WBS Task Tree', icon: ListTodo },
-        { id: 'gantt', label: 'Interactive Gantt', icon: GanttChart },
-        { id: 'kanban', label: 'Kanban Board', icon: Kanban },
-        { id: 'calendar', label: 'Project Calendar', icon: Calendar }
+        { id: 'tasks', label: t('menu_wbs'), icon: ListTodo },
+        { id: 'gantt', label: t('menu_gantt'), icon: GanttChart },
+        { id: 'kanban', label: t('menu_kanban'), icon: Kanban },
+        { id: 'calendar', label: t('menu_calendar'), icon: Calendar }
       ]
     },
     {
-      title: 'Governance & Risks',
+      title: t('menu_dashboard') === 'Dashboard' ? 'Governance & Risks' : (t('menu_dashboard') === 'Bảng Điều khiển' ? 'Quản trị & Rủi ro' : '거버넌스 및 리스크'),
       items: [
-        { id: 'raci', label: 'RACI Matrix', icon: Grid3X3 },
-        { id: 'risks', label: 'Risks & Issues', icon: AlertOctagon },
-        { id: 'changes', label: 'Change Requests', icon: GitPullRequest }
+        { id: 'raci', label: t('menu_raci'), icon: Grid3X3 },
+        { id: 'risks', label: t('menu_risks'), icon: AlertOctagon },
+        { id: 'changes', label: t('menu_changes'), icon: GitPullRequest }
       ]
     },
     {
-      title: 'CJ Foods Specific',
+      title: t('menu_dashboard') === 'Dashboard' ? 'CJ Foods Specific' : (t('menu_dashboard') === 'Bảng Điều khiển' ? 'Đặc thù CJ Foods' : 'CJ Foods 특화'),
       items: [
-        { id: 'fmcg', label: 'FMCG Execution', icon: Boxes },
-        { id: 'resources', label: 'Resource Capacity', icon: Users2 }
+        { id: 'fmcg', label: t('menu_fmcg'), icon: Boxes },
+        { id: 'resources', label: t('menu_resources'), icon: Users2 }
       ]
     }
   ];
@@ -99,7 +102,11 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
             <span>PMO Standard</span>
           </div>
           <p className="text-[10px] text-gray-500 leading-normal">
-            Aligned with PMBOK 7th Edition best practices for FMCG operations.
+            {t('menu_dashboard') === 'Dashboard' 
+              ? 'Aligned with PMBOK 7th Edition best practices for FMCG operations.'
+              : (t('menu_dashboard') === 'Bảng Điều khiển'
+                ? 'Tuân thủ các phương pháp PMBOK thế hệ thứ 7 trong ngành hàng tiêu dùng nhanh (FMCG).'
+                : 'FMCG 운영을 위한 PMBOK 7판 글로벌 표준 방법론 준수.')}
           </p>
         </div>
       </div>

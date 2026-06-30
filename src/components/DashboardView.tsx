@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardView() {
-  const { projects, tasks, resources, activeProjectId } = useApp();
+  const { projects, tasks, resources, activeProjectId, t, language } = useApp();
   const [scope, setScope] = useState<'portfolio' | 'project'>('portfolio');
 
   const activeProject = projects.find(p => p.id === activeProjectId) || projects[0];
@@ -95,6 +95,43 @@ export default function DashboardView() {
     Completed: displayTasks.filter(t => t.status === 'Completed').length
   };
 
+  // Status text conversions for EN/VI/KO
+  const getStatusText = (status: string) => {
+    if (language === 'VI') {
+      if (status === 'Completed') return 'Hoàn thành';
+      if (status === 'Active') return 'Đang hoạt động';
+      if (status === 'Planning') return 'Đang lập kế hoạch';
+      if (status === 'Draft') return 'Bản nháp';
+      return status;
+    }
+    if (language === 'KO') {
+      if (status === 'Completed') return '완료됨';
+      if (status === 'Active') return '활성 상태';
+      if (status === 'Planning') return '계획 수립';
+      if (status === 'Draft') return '초안';
+      return status;
+    }
+    return status;
+  };
+
+  const getStrategicAlignmentText = (align: string) => {
+    if (language === 'VI') {
+      if (align === 'Digital Acceleration') return 'Tăng tốc số hóa';
+      if (align === 'Market Leadership') return 'Dẫn đầu thị trường';
+      if (align === 'Cost Optimization') return 'Tối ưu hóa chi phí';
+      if (align === 'Product Innovation') return 'Đổi mới sản phẩm';
+      return align;
+    }
+    if (language === 'KO') {
+      if (align === 'Digital Acceleration') return '디지털 가속화';
+      if (align === 'Market Leadership') return '시장 리더십';
+      if (align === 'Cost Optimization') return '비용 최적화';
+      if (align === 'Product Innovation') return '제품 혁신';
+      return align;
+    }
+    return align;
+  };
+
   return (
     <div className="space-y-6 p-6 overflow-y-auto h-[calc(100vh-64px)] w-full select-none">
       
@@ -102,12 +139,14 @@ export default function DashboardView() {
       <div className="flex justify-between items-center max-md:flex-col max-md:items-start max-md:space-y-3">
         <div>
           <h1 className="text-xl font-extrabold text-cj-gray-800">
-            {isPortfolio ? 'Executive Portfolio Dashboard' : `Project Dashboard: ${activeProject.code}`}
+            {isPortfolio 
+              ? t('allProjects').split(' (')[0] + ' ' + t('menu_dashboard') 
+              : `${t('menu_dashboard')}: ${activeProject.code}`}
           </h1>
           <p className="text-xs text-gray-500">
             {isPortfolio 
-              ? 'Real-time status updates and Earned Value Management (EVM) for overall portfolio.' 
-              : `Specific project metrics, task completion indexes, and budget variance controls for ${activeProject.name}.`}
+              ? (language === 'VI' ? 'Cập nhật tiến độ danh mục thời gian thực và quản trị chỉ số EVM cho CJ Foods Vietnam.' : (language === 'KO' ? 'CJ Foods Vietnam의 실시간 포트폴리오 상태 및 EVM 관리 지표입니다.' : 'Real-time status updates and Earned Value Management (EVM) for overall portfolio.'))
+              : (language === 'VI' ? `Chi tiết hiệu suất chi phí, kiểm soát tiến độ công việc dự án ${activeProject.name}.` : (language === 'KO' ? `${activeProject.name} 프로젝트의 세부 일정 및 비용 편차 관리지표입니다.` : `Specific project metrics, task completion indexes, and budget variance controls for ${activeProject.name}.`))}
           </p>
         </div>
 
@@ -119,7 +158,7 @@ export default function DashboardView() {
               isPortfolio ? 'bg-cj-blue text-white shadow-sm' : 'text-gray-500 hover:text-cj-gray-800'
             }`}
           >
-            All Projects (Portfolio)
+            {t('allProjects')}
           </button>
           <button
             onClick={() => setScope('project')}
@@ -127,7 +166,7 @@ export default function DashboardView() {
               !isPortfolio ? 'bg-cj-blue text-white shadow-sm' : 'text-gray-500 hover:text-cj-gray-800'
             }`}
           >
-            Active Project Focus
+            {t('activeProjectFocus')}
           </button>
         </div>
       </div>
@@ -139,16 +178,16 @@ export default function DashboardView() {
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-              {isPortfolio ? 'Portfolio Size' : 'Project Status'}
+              {isPortfolio ? t('portfolioSize') : t('projectStatus')}
             </span>
             <span className="text-2xl font-black text-cj-gray-800 mt-1 block">
-              {isPortfolio ? `${totalProjects} Projects` : activeProject.status}
+              {isPortfolio ? `${totalProjects} ${language === 'VI' ? 'Dự án' : (language === 'KO' ? '개 프로젝트' : 'Projects')}` : getStatusText(activeProject.status)}
             </span>
             <span className="text-[10px] text-gray-500 mt-1.5 flex items-center">
               {isPortfolio ? (
                 <>
-                  <span className="font-semibold text-cj-blue mr-1">{completedProjects}</span> completed • 
-                  <span className="font-semibold text-cj-red ml-1 mr-1">{onTrackProjects}</span> active
+                  <span className="font-semibold text-cj-blue mr-1">{completedProjects}</span> {t('completed')} • 
+                  <span className="font-semibold text-cj-red ml-1 mr-1">{onTrackProjects}</span> {t('active')}
                 </>
               ) : (
                 <>
@@ -166,10 +205,10 @@ export default function DashboardView() {
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-              {isPortfolio ? 'Average Progress' : 'Project Progress'}
+              {isPortfolio ? t('averageProgress') : t('projectProgress')}
             </span>
             <span className="text-2xl font-black text-cj-gray-800 mt-1 block">
-              {progressVal}% Complete
+              {progressVal}% {language === 'VI' ? 'Hoàn thành' : (language === 'KO' ? '완료' : 'Complete')}
             </span>
             <div className="w-32 bg-cj-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
               <div className="bg-gradient-to-r from-cj-blue to-cj-red h-full rounded-full" style={{ width: `${progressVal}%` }} />
@@ -184,13 +223,13 @@ export default function DashboardView() {
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-              {isPortfolio ? 'Budget Consumption' : 'Cost Consumption'}
+              {isPortfolio ? t('budgetConsumption') : t('costConsumption')}
             </span>
             <span className="text-2xl font-black text-cj-gray-800 mt-1 block">
               {budgetVal > 0 ? Math.round((costVal / budgetVal) * 100) : 0}%
             </span>
             <span className="text-[10px] text-gray-500 mt-1.5 block">
-              Spent: <span className="font-bold text-cj-gray-800">{(costVal).toLocaleString()}M</span> / {(budgetVal).toLocaleString()}M VND
+              {t('spent')}: <span className="font-bold text-cj-gray-800">{(costVal).toLocaleString()}M</span> / {(budgetVal).toLocaleString()}M VND
             </span>
           </div>
           <div className="w-12 h-12 bg-cj-orange/5 rounded-xl flex items-center justify-center text-cj-orange">
@@ -202,20 +241,22 @@ export default function DashboardView() {
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-              {isPortfolio ? 'Portfolio Risks' : 'Tasks Summary'}
+              {isPortfolio ? t('portfolioRisks') : t('tasksSummary')}
             </span>
             <span className="text-2xl font-black mt-1 block text-cj-gray-800">
-              {isPortfolio ? `${atRiskProjects} Projects At Risk` : `${displayTasks.length} Tasks`}
+              {isPortfolio 
+                ? `${atRiskProjects} ${language === 'VI' ? 'Dự án Rủi ro' : (language === 'KO' ? '개 위험 프로젝트' : 'Projects At Risk')}` 
+                : `${displayTasks.length} ${language === 'VI' ? 'Công việc' : (language === 'KO' ? '개 작업' : 'Tasks')}`}
             </span>
             <span className="text-[10px] text-gray-500 mt-1.5 flex items-center">
               {isPortfolio ? (
                 <>
                   <AlertTriangle className="h-3 w-3 text-cj-orange mr-1" />
-                  <span>{overloadedCount} overloaded resources</span>
+                  <span>{overloadedCount} {t('overloadedResources').split(' ')[0]} {language === 'VI' ? 'nhân sự quá tải' : (language === 'KO' ? '개 초과 리소스' : 'overloaded resources')}</span>
                 </>
               ) : (
                 <>
-                  PIC: <span className="font-bold text-cj-red ml-1">{activeProject.pm}</span>
+                  PM: <span className="font-bold text-cj-red ml-1">{activeProject.pm}</span>
                 </>
               )}
             </span>
@@ -235,8 +276,8 @@ export default function DashboardView() {
             </h2>
             <p className="text-[11px] text-gray-500">
               {isPortfolio 
-                ? 'Portfolio-wide health scoring metrics based on cost and schedule performance indices.' 
-                : 'Project specific cost performance metrics compared to planned schedule baseline.'}
+                ? (language === 'VI' ? 'Chỉ số đo lường hiệu quả quản trị chi phí và tiến độ danh mục đầu tư theo tiêu chuẩn PMI.' : (language === 'KO' ? 'PMI 표준 방법론에 기반한 전체 포트폴리오 일정 및 비용 수행 효율 지표입니다.' : 'Portfolio-wide health scoring metrics based on cost and schedule performance indices.'))
+                : (language === 'VI' ? 'So sánh chỉ số chi phí thực tế và tiến độ công việc với kế hoạch cơ sở (baseline).' : (language === 'KO' ? '베이스라인 일정 대비 프로젝트의 실제 비용 및 진척 가치를 분석합니다.' : 'Project specific cost performance metrics compared to planned schedule baseline.'))}
             </p>
           </div>
           <span className="text-xs text-cj-blue font-bold px-2 py-0.5 bg-cj-blue/5 rounded-md">PMBOK 7th Ed. Controls</span>
@@ -245,39 +286,43 @@ export default function DashboardView() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           
           <div className="p-3 bg-cj-gray-100/50 rounded-xl">
-            <span className="text-[10px] text-gray-500 font-bold block uppercase">CPI (Cost Performance Index)</span>
+            <span className="text-[10px] text-gray-500 font-bold block uppercase">{t('cpi').split(' (')[0]}</span>
             <span className={`text-xl font-extrabold block mt-1 ${cpi >= 1 ? 'text-green-600' : 'text-cj-red'}`}>
               {cpi.toFixed(2)}
             </span>
             <span className="text-[9px] text-gray-400">
-              {cpi >= 1 ? 'Under Budget' : 'Over Budget'}
+              {cpi >= 1 ? t('underBudget') : t('overBudget')}
             </span>
           </div>
 
           <div className="p-3 bg-cj-gray-100/50 rounded-xl">
-            <span className="text-[10px] text-gray-500 font-bold block uppercase">SPI (Schedule Perf. Index)</span>
+            <span className="text-[10px] text-gray-500 font-bold block uppercase">{t('spi').split(' (')[0]}</span>
             <span className={`text-xl font-extrabold block mt-1 ${spi >= 1 ? 'text-green-600' : 'text-cj-red'}`}>
               {spi.toFixed(2)}
             </span>
             <span className="text-[9px] text-gray-400">
-              {spi >= 1 ? 'Ahead of Schedule' : 'Behind Schedule'}
+              {spi >= 1 ? t('aheadSchedule') : t('behindSchedule')}
             </span>
           </div>
 
           <div className="p-3 bg-cj-gray-100/50 rounded-xl">
-            <span className="text-[10px] text-gray-500 font-bold block uppercase">CV (Cost Variance)</span>
+            <span className="text-[10px] text-gray-500 font-bold block uppercase">{t('cv').split(' (')[0]}</span>
             <span className={`text-xl font-extrabold block mt-1 ${costVariance >= 0 ? 'text-green-600' : 'text-cj-red'}`}>
               {costVariance >= 0 ? '+' : ''}{Math.round(costVariance).toLocaleString()}M VND
             </span>
-            <span className="text-[9px] text-gray-400">Value vs. Actual Spent</span>
+            <span className="text-[9px] text-gray-400">
+              {language === 'VI' ? 'Giá trị thu được vs Chi phí thực tế' : (language === 'KO' ? '진척 가치 vs 실제 비용' : 'Value vs. Actual Spent')}
+            </span>
           </div>
 
           <div className="p-3 bg-cj-gray-100/50 rounded-xl">
-            <span className="text-[10px] text-gray-500 font-bold block uppercase">SV (Schedule Variance)</span>
+            <span className="text-[10px] text-gray-500 font-bold block uppercase">{t('sv').split(' (')[0]}</span>
             <span className={`text-xl font-extrabold block mt-1 ${scheduleVariance >= 0 ? 'text-green-600' : 'text-cj-red'}`}>
               {scheduleVariance >= 0 ? '+' : ''}{Math.round(scheduleVariance).toLocaleString()}M VND
             </span>
-            <span className="text-[9px] text-gray-400">Value vs. Baseline Target</span>
+            <span className="text-[9px] text-gray-400">
+              {language === 'VI' ? 'Giá trị thu được vs Kế hoạch cơ sở' : (language === 'KO' ? '진척 가치 vs 계획 일정' : 'Value vs. Baseline Target')}
+            </span>
           </div>
         </div>
       </div>
@@ -289,7 +334,7 @@ export default function DashboardView() {
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex flex-col justify-between">
           <div>
             <h3 className="text-xs font-bold text-cj-gray-800 uppercase tracking-wider mb-4">
-              {isPortfolio ? 'Projects Status' : 'Tasks Status Breakdown'}
+              {isPortfolio ? (language === 'VI' ? 'Trạng thái dự án' : (language === 'KO' ? '프로젝트 상태 분석' : 'Projects Status')) : t('taskStatusBreakdown')}
             </h3>
             
             <div className="flex items-center justify-center h-40">
@@ -314,7 +359,7 @@ export default function DashboardView() {
                       {totalProjects}
                     </text>
                     <text x="50%" y="62%" className="text-[2.5px] font-bold text-gray-500" textAnchor="middle">
-                      PROJECTS
+                      {language === 'VI' ? 'DỰ ÁN' : (language === 'KO' ? '프로젝트' : 'PROJECTS')}
                     </text>
                   </g>
                 </svg>
@@ -339,7 +384,7 @@ export default function DashboardView() {
                       {displayTasks.length}
                     </text>
                     <text x="50%" y="62%" className="text-[2.5px] font-bold text-gray-500" textAnchor="middle">
-                      TASKS
+                      {language === 'VI' ? 'CÔNG VIỆC' : (language === 'KO' ? '작업수' : 'TASKS')}
                     </text>
                   </g>
                 </svg>
@@ -352,38 +397,38 @@ export default function DashboardView() {
               <>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-cj-blue" />
-                  <span className="font-bold text-cj-gray-800">Active ({statusCounts.Active})</span>
+                  <span className="font-bold text-cj-gray-800">{getStatusText('Active')} ({statusCounts.Active})</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                  <span className="font-bold text-cj-gray-800">Completed ({statusCounts.Completed})</span>
+                  <span className="font-bold text-cj-gray-800">{getStatusText('Completed')} ({statusCounts.Completed})</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-cj-orange" />
-                  <span className="font-bold text-cj-gray-800">Planning ({statusCounts.Planning})</span>
+                  <span className="font-bold text-cj-gray-800">{getStatusText('Planning')} ({statusCounts.Planning})</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-gray-300" />
-                  <span className="font-bold text-cj-gray-800">Draft ({statusCounts.Draft})</span>
+                  <span className="font-bold text-cj-gray-800">{getStatusText('Draft')} ({statusCounts.Draft})</span>
                 </div>
               </>
             ) : (
               <>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                  <span className="font-bold text-cj-gray-800">In Progress ({taskStatusCounts.InProgress})</span>
+                  <span className="font-bold text-cj-gray-800">{language === 'VI' ? 'Đang chạy' : (language === 'KO' ? '진행중' : 'In Progress')} ({taskStatusCounts.InProgress})</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                  <span className="font-bold text-cj-gray-800">Completed ({taskStatusCounts.Completed})</span>
+                  <span className="font-bold text-cj-gray-800">{language === 'VI' ? 'Hoàn thành' : (language === 'KO' ? '완료됨' : 'Completed')} ({taskStatusCounts.Completed})</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-cj-orange" />
-                  <span className="font-bold text-cj-gray-800">To Do ({taskStatusCounts.ToDo})</span>
+                  <span className="font-bold text-cj-gray-800">{language === 'VI' ? 'Cần làm' : (language === 'KO' ? '할 일' : 'To Do')} ({taskStatusCounts.ToDo})</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                  <span className="font-bold text-cj-gray-800">Blocked ({taskStatusCounts.Blocked})</span>
+                  <span className="font-bold text-cj-gray-800">{language === 'VI' ? 'Bị nghẽn' : (language === 'KO' ? '지연됨' : 'Blocked')} ({taskStatusCounts.Blocked})</span>
                 </div>
               </>
             )}
@@ -394,11 +439,11 @@ export default function DashboardView() {
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft lg:col-span-2">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-xs font-bold text-cj-gray-800 uppercase tracking-wider">
-              {isPortfolio ? 'Cumulative Budget Burn Curve' : `Budget Burn: ${activeProject.code}`}
+              {t('budgetBurnCurve')}
             </h3>
             <div className="flex items-center space-x-3 text-[10px]">
-              <span className="flex items-center"><span className="w-2.5 h-1 bg-cj-blue mr-1 rounded" />Planned Value</span>
-              <span className="flex items-center"><span className="w-2.5 h-1 bg-cj-red mr-1 rounded" />Actual Cost</span>
+              <span className="flex items-center"><span className="w-2.5 h-1 bg-cj-blue mr-1 rounded" />{language === 'VI' ? 'Giá trị Kế hoạch' : (language === 'KO' ? '계획 가치' : 'Planned Value')}</span>
+              <span className="flex items-center"><span className="w-2.5 h-1 bg-cj-red mr-1 rounded" />{language === 'VI' ? 'Chi phí Thực tế' : (language === 'KO' ? '실제 비용' : 'Actual Cost')}</span>
             </div>
           </div>
 
@@ -455,7 +500,7 @@ export default function DashboardView() {
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft">
           <h3 className="text-xs font-bold text-cj-gray-800 uppercase tracking-wider mb-4 flex items-center">
             <Clock className="h-4.5 w-4.5 text-cj-red mr-1.5" />
-            <span>Late Tasks & Deadlines ({lateTasks.length})</span>
+            <span>{t('lateTasks')} ({lateTasks.length})</span>
           </h3>
 
           <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
@@ -466,12 +511,14 @@ export default function DashboardView() {
                   <p className="text-[10px] text-gray-500 mt-0.5">PIC: {t.picName} • Due: <span className="text-cj-red font-bold">{t.dueDate}</span></p>
                 </div>
                 <span className="text-[9px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full uppercase">
-                  Delayed
+                  {language === 'VI' ? 'TRỄ HẠN' : (language === 'KO' ? '지연됨' : 'Delayed')}
                 </span>
               </div>
             ))}
             {lateTasks.length === 0 && (
-              <div className="text-center text-xs text-gray-400 py-6">No delayed tasks found. Good job!</div>
+              <div className="text-center text-xs text-gray-400 py-6">
+                {language === 'VI' ? 'Không có công việc nào bị trễ hạn. Tuyệt vời!' : (language === 'KO' ? '지연된 작업이 없습니다. 훌륭합니다!' : 'No delayed tasks found. Good job!')}
+              </div>
             )}
           </div>
         </div>
@@ -480,7 +527,7 @@ export default function DashboardView() {
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft">
           <h3 className="text-xs font-bold text-cj-gray-800 uppercase tracking-wider mb-4 flex items-center">
             <UserCheck className="h-4.5 w-4.5 text-cj-blue mr-1.5" />
-            <span>Critical Path Milestones ({upcomingMilestones.length})</span>
+            <span>{t('criticalMilestones')} ({upcomingMilestones.length})</span>
           </h3>
 
           <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
@@ -492,12 +539,14 @@ export default function DashboardView() {
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-black text-cj-blue block">{t.progress}%</span>
-                  <span className="text-[9px] text-gray-400">Progress</span>
+                  <span className="text-[9px] text-gray-400">{language === 'VI' ? 'Tiến độ' : (language === 'KO' ? '진척률' : 'Progress')}</span>
                 </div>
               </div>
             ))}
             {upcomingMilestones.length === 0 && (
-              <div className="text-center text-xs text-gray-400 py-6">No active critical path milestones.</div>
+              <div className="text-center text-xs text-gray-400 py-6">
+                {language === 'VI' ? 'Không có cột mốc đường găng nào.' : (language === 'KO' ? '활성 마일스톤이 없습니다.' : 'No active critical path milestones.')}
+              </div>
             )}
           </div>
         </div>
