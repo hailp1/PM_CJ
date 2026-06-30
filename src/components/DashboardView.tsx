@@ -4,20 +4,20 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import {
   TrendingUp,
-  DollarSign,
   Briefcase,
   CheckCircle,
   AlertTriangle,
   Clock,
-  ChevronRight,
-  TrendingDown,
   UserCheck,
   Building,
-  Target
+  Target,
+  Users,
+  ShieldAlert,
+  Calendar
 } from 'lucide-react';
 
 export default function DashboardView() {
-  const { projects, tasks, resources, activeProjectId, t, language } = useApp();
+  const { projects, tasks, resources, risks, activeProjectId, t, language } = useApp();
   const [scope, setScope] = useState<'portfolio' | 'project'>('portfolio');
 
   const activeProject = projects.find(p => p.id === activeProjectId) || projects[0];
@@ -25,56 +25,36 @@ export default function DashboardView() {
   // Helper variables for filtering
   const displayProjects = scope === 'portfolio' ? projects : [activeProject];
   const displayTasks = scope === 'portfolio' ? tasks : tasks.filter(t => t.projectId === activeProject.id);
+  const displayRisks = scope === 'portfolio' ? risks : risks.filter(r => r.projectId === activeProject.id);
 
   // Portfolio level metrics
   const totalProjects = projects.length;
   const completedProjects = projects.filter(p => p.status === 'Completed').length;
   const onTrackProjects = projects.filter(p => p.status === 'Active' && p.riskLevel !== 'High').length;
-  const atRiskProjects = projects.filter(p => p.riskLevel === 'High' && p.status !== 'Completed').length;
 
-  // Render variables based on Scope (Portfolio vs Active Project)
   const isPortfolio = scope === 'portfolio';
 
-  const budgetVal = isPortfolio
-    ? projects.reduce((acc, p) => acc + p.budget, 0)
-    : activeProject.budget;
-
-  const costVal = isPortfolio
-    ? projects.reduce((acc, p) => acc + p.actualCost, 0)
-    : activeProject.actualCost;
-
+  // Progress metrics
   const progressVal = isPortfolio
     ? Math.round(projects.reduce((acc, p) => acc + p.progress, 0) / totalProjects)
     : activeProject.progress;
 
-  // Earned Value Management (EVM)
-  const ev = isPortfolio
-    ? projects.reduce((acc, p) => acc + p.budget * (p.progress / 100), 0)
-    : activeProject.budget * (activeProject.progress / 100);
+  // PIC and Resource Load Metrics (Mapped from tasks to avoid type mismatches)
+  const activePicsCount = resources.filter(r => tasks.some(t => t.picId === r.userId)).length;
+  const overloadedPicsCount = resources.filter(r => r.availabilityStatus === 'Overloaded').length;
 
-  const ac = costVal;
-  
-  // PV representing slightly ahead of progress
-  const pv = isPortfolio
-    ? projects.reduce((acc, p) => acc + p.budget * 0.48, 0)
-    : activeProject.budget * 0.52;
+  // Risk Metrics
+  const criticalRisksCount = displayRisks.filter(r => (r.severity === 'High' || r.severity === 'Critical') && r.status !== 'Closed').length;
+  const totalRisksCount = displayRisks.filter(r => r.status !== 'Closed').length;
 
-  const cpi = ac > 0 ? ev / ac : 1;
-  const spi = pv > 0 ? ev / pv : 1;
-  const costVariance = ev - ac;
-  const scheduleVariance = ev - pv;
-
-  // Resource Overloads
-  const overloadedCount = resources.filter(r => r.availabilityStatus === 'Overloaded').length;
+  // Late Tasks (due date passed, not completed)
+  const todayStr = '2026-06-30';
+  const lateTasks = displayTasks.filter(t => t.status !== 'Completed' && t.dueDate < todayStr);
 
   // Milestones (Critical path tasks)
   const upcomingMilestones = displayTasks
     .filter(t => t.status !== 'Completed' && t.priority === 'Critical')
     .slice(0, 3);
-
-  // Late Tasks (due date passed, not completed)
-  const todayStr = '2026-06-30';
-  const lateTasks = displayTasks.filter(t => t.status !== 'Completed' && t.dueDate < todayStr);
 
   // Status breakdown calculations
   const statusCounts = {
@@ -84,7 +64,6 @@ export default function DashboardView() {
     Completed: displayProjects.filter(p => p.status === 'Completed').length
   };
 
-  // If viewing project, status counts represents WBS tasks status instead!
   const taskStatusCounts = {
     Backlog: displayTasks.filter(t => t.status === 'Backlog').length,
     Planning: displayTasks.filter(t => t.status === 'Planning').length,
@@ -95,41 +74,20 @@ export default function DashboardView() {
     Completed: displayTasks.filter(t => t.status === 'Completed').length
   };
 
-  // Status text conversions for EN/VI/KO
   const getStatusText = (status: string) => {
     if (language === 'VI') {
       if (status === 'Completed') return 'Hoàn thành';
       if (status === 'Active') return 'Đang hoạt động';
       if (status === 'Planning') return 'Đang lập kế hoạch';
       if (status === 'Draft') return 'Bản nháp';
-      return status;
     }
     if (language === 'KO') {
       if (status === 'Completed') return '완료됨';
       if (status === 'Active') return '활성 상태';
       if (status === 'Planning') return '계획 수립';
       if (status === 'Draft') return '초안';
-      return status;
     }
     return status;
-  };
-
-  const getStrategicAlignmentText = (align: string) => {
-    if (language === 'VI') {
-      if (align === 'Digital Acceleration') return 'Tăng tốc số hóa';
-      if (align === 'Market Leadership') return 'Dẫn đầu thị trường';
-      if (align === 'Cost Optimization') return 'Tối ưu hóa chi phí';
-      if (align === 'Product Innovation') return 'Đổi mới sản phẩm';
-      return align;
-    }
-    if (language === 'KO') {
-      if (align === 'Digital Acceleration') return '디지털 가속화';
-      if (align === 'Market Leadership') return '시장 리더십';
-      if (align === 'Cost Optimization') return '비용 최적화';
-      if (align === 'Product Innovation') return '제품 혁신';
-      return align;
-    }
-    return align;
   };
 
   return (
@@ -145,8 +103,8 @@ export default function DashboardView() {
           </h1>
           <p className="text-xs text-gray-500">
             {isPortfolio 
-              ? (language === 'VI' ? 'Cập nhật tiến độ danh mục thời gian thực và quản trị chỉ số EVM cho CJ Foods Vietnam.' : (language === 'KO' ? 'CJ Foods Vietnam의 실시간 포트폴리오 상태 및 EVM 관리 지표입니다.' : 'Real-time status updates and Earned Value Management (EVM) for overall portfolio.'))
-              : (language === 'VI' ? `Chi tiết hiệu suất chi phí, kiểm soát tiến độ công việc dự án ${activeProject.name}.` : (language === 'KO' ? `${activeProject.name} 프로젝트의 세부 일정 및 비용 편차 관리지표입니다.` : `Specific project metrics, task completion indexes, and budget variance controls for ${activeProject.name}.`))}
+              ? (language === 'VI' ? 'Giám sát tiến độ dự án, tải trọng nhân sự và kiểm soát rủi ro toàn danh mục.' : (language === 'KO' ? '포트폴리오의 실시간 진행률, 리소스 가동률 및 활성 리스크 모니터링입니다.' : 'Monitor project progress, resource workload, and active risk controls across all portfolios.'))
+              : (language === 'VI' ? `Chi tiết hiệu suất thực thi công việc, nhân sự PIC và cảnh báo rủi ro của dự án ${activeProject.name}.` : (language === 'KO' ? `${activeProject.name} 프로젝트의 작업 수행 현황, 담당자 가동률 및 주요 리스크 분석입니다.` : `Specific progress timelines, PIC task distributions, and risk heatmaps for ${activeProject.name}.`))}
           </p>
         </div>
 
@@ -174,7 +132,7 @@ export default function DashboardView() {
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         
-        {/* Metric Card 1: Size/Status */}
+        {/* Card 1: Size/Status */}
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
@@ -201,7 +159,7 @@ export default function DashboardView() {
           </div>
         </div>
 
-        {/* Metric Card 2: Progress */}
+        {/* Card 2: Progress */}
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
@@ -219,122 +177,103 @@ export default function DashboardView() {
           </div>
         </div>
 
-        {/* Metric Card 3: Cost */}
+        {/* Card 3: PIC & Resource Count */}
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-              {isPortfolio ? t('budgetConsumption') : t('costConsumption')}
+              {language === 'VI' ? 'Nhân lực PIC' : (language === 'KO' ? 'PIC 담당 리소스' : 'Active PIC Resources')}
             </span>
             <span className="text-2xl font-black text-cj-gray-800 mt-1 block">
-              {budgetVal > 0 ? Math.round((costVal / budgetVal) * 100) : 0}%
+              {activePicsCount} {language === 'VI' ? 'Nhân sự' : (language === 'KO' ? '명' : 'Staff')}
             </span>
             <span className="text-[10px] text-gray-500 mt-1.5 block">
-              {t('spent')}: <span className="font-bold text-cj-gray-800">{(costVal).toLocaleString()}M</span> / {(budgetVal).toLocaleString()}M VND
+              {language === 'VI' ? 'Nhân sự quá tải: ' : (language === 'KO' ? '초과 할당: ' : 'Overloaded: ')}
+              <span className={`font-bold ${overloadedPicsCount > 0 ? 'text-cj-red' : 'text-green-600'}`}>{overloadedPicsCount} PICs</span>
             </span>
           </div>
-          <div className="w-12 h-12 bg-cj-orange/5 rounded-xl flex items-center justify-center text-cj-orange">
-            <DollarSign className="h-6 w-6" />
+          <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600">
+            <Users className="h-6 w-6" />
           </div>
         </div>
 
-        {/* Metric Card 4: Risks/Tasks count */}
+        {/* Card 4: Risks count */}
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
-              {isPortfolio ? t('portfolioRisks') : t('tasksSummary')}
+              {language === 'VI' ? 'Rủi ro đang hoạt động' : (language === 'KO' ? '활성 리스크 관리' : 'Active Risks')}
             </span>
             <span className="text-2xl font-black mt-1 block text-cj-gray-800">
-              {isPortfolio 
-                ? `${atRiskProjects} ${language === 'VI' ? 'Dự án Rủi ro' : (language === 'KO' ? '개 위험 프로젝트' : 'Projects At Risk')}` 
-                : `${displayTasks.length} ${language === 'VI' ? 'Công việc' : (language === 'KO' ? '개 작업' : 'Tasks')}`}
+              {totalRisksCount} {language === 'VI' ? 'Rủi ro' : (language === 'KO' ? '개 리스크' : 'Risks')}
             </span>
             <span className="text-[10px] text-gray-500 mt-1.5 flex items-center">
-              {isPortfolio ? (
-                <>
-                  <AlertTriangle className="h-3 w-3 text-cj-orange mr-1" />
-                  <span>{overloadedCount} {t('overloadedResources').split(' ')[0]} {language === 'VI' ? 'nhân sự quá tải' : (language === 'KO' ? '개 초과 리소스' : 'overloaded resources')}</span>
-                </>
-              ) : (
-                <>
-                  PM: <span className="font-bold text-cj-red ml-1">{activeProject.pm}</span>
-                </>
-              )}
+              <AlertTriangle className="h-3 w-3 text-cj-red mr-1" />
+              <span className="font-bold text-cj-red">{criticalRisksCount} {language === 'VI' ? 'mức độ Cao' : (language === 'KO' ? '높음 등급' : 'High Severity')}</span>
             </span>
           </div>
           <div className="w-12 h-12 bg-cj-red/5 rounded-xl flex items-center justify-center text-cj-red">
-            <AlertTriangle className="h-6 w-6" />
+            <ShieldAlert className="h-6 w-6" />
           </div>
         </div>
       </div>
 
-      {/* Earned Value Management (EVM) Panels */}
+      {/* PIC Resource Load Matrix (Replaces EVM block) */}
       <div className="bg-white p-6 rounded-2xl border border-cj-gray-200/60 shadow-soft">
         <div className="flex justify-between items-center mb-4">
           <div>
             <h2 className="text-sm font-black text-cj-gray-800 uppercase tracking-wider">
-              {isPortfolio ? 'Portfolio EVM Controls' : `EVM Metrics: ${activeProject.code}`}
+              {language === 'VI' ? 'Bảng cân tải & Phân phối công việc PIC' : (language === 'KO' ? '담당자별 작업 부하 매트릭스' : 'PIC Resource Workload & Task Matrix')}
             </h2>
             <p className="text-[11px] text-gray-500">
-              {isPortfolio 
-                ? (language === 'VI' ? 'Chỉ số đo lường hiệu quả quản trị chi phí và tiến độ danh mục đầu tư theo tiêu chuẩn PMI.' : (language === 'KO' ? 'PMI 표준 방법론에 기반한 전체 포트폴리오 일정 및 비용 수행 효율 지표입니다.' : 'Portfolio-wide health scoring metrics based on cost and schedule performance indices.'))
-                : (language === 'VI' ? 'So sánh chỉ số chi phí thực tế và tiến độ công việc với kế hoạch cơ sở (baseline).' : (language === 'KO' ? '베이스라인 일정 대비 프로젝트의 실제 비용 및 진척 가치를 분석합니다.' : 'Project specific cost performance metrics compared to planned schedule baseline.'))}
+              {language === 'VI' ? 'Thống kê chi tiết tải trọng công việc thực tế của từng nhân sự tham gia dự án.' : (language === 'KO' ? '프로젝트 참여 인원별 배정된 작업 건수와 업무 가동 상태를 보여줍니다.' : 'Details of assigned tasks and current allocation load status for each team member.')}
             </p>
           </div>
-          <span className="text-xs text-cj-blue font-bold px-2 py-0.5 bg-cj-blue/5 rounded-md">PMBOK 7th Ed. Controls</span>
+          <span className="text-xs text-purple-600 font-bold px-2 py-0.5 bg-purple-50 rounded-md">
+            {language === 'VI' ? 'Điều phối nhân lực' : (language === 'KO' ? '리소스 제어' : 'Resource Controls')}
+          </span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          
-          <div className="p-3 bg-cj-gray-100/50 rounded-xl">
-            <span className="text-[10px] text-gray-500 font-bold block uppercase">{t('cpi').split(' (')[0]}</span>
-            <span className={`text-xl font-extrabold block mt-1 ${cpi >= 1 ? 'text-green-600' : 'text-cj-red'}`}>
-              {cpi.toFixed(2)}
-            </span>
-            <span className="text-[9px] text-gray-400">
-              {cpi >= 1 ? t('underBudget') : t('overBudget')}
-            </span>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-center">
+          {resources.slice(0, 7).map((r) => {
+            const picTasks = tasks.filter(t => t.picId === r.userId && t.projectId === activeProject.id);
+            const picLateTasks = picTasks.filter(t => t.status !== 'Completed' && t.dueDate < todayStr);
 
-          <div className="p-3 bg-cj-gray-100/50 rounded-xl">
-            <span className="text-[10px] text-gray-500 font-bold block uppercase">{t('spi').split(' (')[0]}</span>
-            <span className={`text-xl font-extrabold block mt-1 ${spi >= 1 ? 'text-green-600' : 'text-cj-red'}`}>
-              {spi.toFixed(2)}
-            </span>
-            <span className="text-[9px] text-gray-400">
-              {spi >= 1 ? t('aheadSchedule') : t('behindSchedule')}
-            </span>
-          </div>
-
-          <div className="p-3 bg-cj-gray-100/50 rounded-xl">
-            <span className="text-[10px] text-gray-500 font-bold block uppercase">{t('cv').split(' (')[0]}</span>
-            <span className={`text-xl font-extrabold block mt-1 ${costVariance >= 0 ? 'text-green-600' : 'text-cj-red'}`}>
-              {costVariance >= 0 ? '+' : ''}{Math.round(costVariance).toLocaleString()}M VND
-            </span>
-            <span className="text-[9px] text-gray-400">
-              {language === 'VI' ? 'Giá trị thu được vs Chi phí thực tế' : (language === 'KO' ? '진척 가치 vs 실제 비용' : 'Value vs. Actual Spent')}
-            </span>
-          </div>
-
-          <div className="p-3 bg-cj-gray-100/50 rounded-xl">
-            <span className="text-[10px] text-gray-500 font-bold block uppercase">{t('sv').split(' (')[0]}</span>
-            <span className={`text-xl font-extrabold block mt-1 ${scheduleVariance >= 0 ? 'text-green-600' : 'text-cj-red'}`}>
-              {scheduleVariance >= 0 ? '+' : ''}{Math.round(scheduleVariance).toLocaleString()}M VND
-            </span>
-            <span className="text-[9px] text-gray-400">
-              {language === 'VI' ? 'Giá trị thu được vs Kế hoạch cơ sở' : (language === 'KO' ? '진척 가치 vs 계획 일정' : 'Value vs. Baseline Target')}
-            </span>
-          </div>
+            return (
+              <div key={r.userId} className="p-3 bg-cj-gray-100/40 border border-cj-gray-200/60 rounded-xl flex flex-col justify-between">
+                <div>
+                  <span className="font-extrabold text-xs text-cj-gray-800 block truncate">{r.userName}</span>
+                  <span className="text-[9px] text-gray-400 block mt-0.5 uppercase font-bold">{r.department}</span>
+                </div>
+                <div className="my-2.5">
+                  <span className="text-lg font-black text-cj-blue block">{picTasks.length}</span>
+                  <span className="text-[9px] text-gray-400">{language === 'VI' ? 'Công việc' : (language === 'KO' ? '개 작업' : 'Tasks')}</span>
+                </div>
+                <div>
+                  {picLateTasks.length > 0 ? (
+                    <span className="text-[8px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold uppercase inline-block animate-pulse">
+                      {picLateTasks.length} {language === 'VI' ? 'TRỄ HẠN' : (language === 'KO' ? '지연됨' : 'LATE')}
+                    </span>
+                  ) : (
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase inline-block ${
+                      r.availabilityStatus === 'Overloaded' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                    }`}>
+                      {r.availabilityStatus}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Charts section */}
+      {/* Charts & Analytical Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Project Status Breakdown (SVG Donut Chart) */}
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft flex flex-col justify-between">
           <div>
             <h3 className="text-xs font-bold text-cj-gray-800 uppercase tracking-wider mb-4">
-              {isPortfolio ? (language === 'VI' ? 'Trạng thái dự án' : (language === 'KO' ? '프로젝트 상태 분석' : 'Projects Status')) : t('taskStatusBreakdown')}
+              {isPortfolio ? (language === 'VI' ? 'Trạng thái dự án danh mục' : (language === 'KO' ? '포트폴리오 프로젝트 현황' : 'Projects Status')) : t('taskStatusBreakdown')}
             </h3>
             
             <div className="flex items-center justify-center h-40">
@@ -435,15 +374,15 @@ export default function DashboardView() {
           </div>
         </div>
 
-        {/* Budget Burn Line Chart (SVG Line Chart) */}
+        {/* Task Completion Burnup Line Chart */}
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft lg:col-span-2">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-xs font-bold text-cj-gray-800 uppercase tracking-wider">
-              {t('budgetBurnCurve')}
+              {language === 'VI' ? 'Biểu đồ tích lũy công việc hoàn thành (Burn-up)' : (language === 'KO' ? '작업 완료 누적 추이 차트 (Burn-up)' : 'Task Completion Cumulative Trend (Burn-up)')}
             </h3>
             <div className="flex items-center space-x-3 text-[10px]">
-              <span className="flex items-center"><span className="w-2.5 h-1 bg-cj-blue mr-1 rounded" />{language === 'VI' ? 'Giá trị Kế hoạch' : (language === 'KO' ? '계획 가치' : 'Planned Value')}</span>
-              <span className="flex items-center"><span className="w-2.5 h-1 bg-cj-red mr-1 rounded" />{language === 'VI' ? 'Chi phí Thực tế' : (language === 'KO' ? '실제 비용' : 'Actual Cost')}</span>
+              <span className="flex items-center"><span className="w-2.5 h-1 bg-cj-blue mr-1 rounded" />{language === 'VI' ? 'Tổng số việc kế hoạch' : (language === 'KO' ? '총 계획 작업수' : 'Total Planned Tasks')}</span>
+              <span className="flex items-center"><span className="w-2.5 h-1 bg-green-500 mr-1 rounded" />{language === 'VI' ? 'Công việc đã xong' : (language === 'KO' ? '완료된 작업수' : 'Completed Tasks')}</span>
             </div>
           </div>
 
@@ -456,13 +395,13 @@ export default function DashboardView() {
 
               {/* Y Axis Labels */}
               <text x="30" y="24" className="text-[8px] text-gray-400 font-bold" textAnchor="end">
-                {isPortfolio ? '15B' : `${Math.round(budgetVal * 1.2)}M`}
+                {isPortfolio ? '50 Tasks' : '20 Tasks'}
               </text>
               <text x="30" y="64" className="text-[8px] text-gray-400 font-bold" textAnchor="end">
-                {isPortfolio ? '8B' : `${Math.round(budgetVal * 0.6)}M`}
+                {isPortfolio ? '25 Tasks' : '10 Tasks'}
               </text>
               <text x="30" y="104" className="text-[8px] text-gray-400 font-bold" textAnchor="end">
-                {isPortfolio ? '3B' : `${Math.round(budgetVal * 0.2)}M`}
+                {isPortfolio ? '10 Tasks' : '4 Tasks'}
               </text>
               <text x="30" y="134" className="text-[8px] text-gray-400 font-bold" textAnchor="end">0</text>
 
@@ -474,27 +413,27 @@ export default function DashboardView() {
               <text x="400" y="145" className="text-[8px] text-gray-400 font-bold" textAnchor="middle">Oct</text>
               <text x="480" y="145" className="text-[8px] text-gray-400 font-bold" textAnchor="middle">Dec</text>
 
-              {/* Line: Planned Value (Blue) */}
-              <path d="M 40 130 Q 130 110 220 85 T 400 40 T 480 20" fill="none" stroke="#0055a5" strokeWidth="2.5" strokeLinecap="round" />
+              {/* Line: Total Planned Tasks (Blue) */}
+              <path d="M 40 120 L 130 90 L 220 70 L 310 50 L 400 40 L 480 30" fill="none" stroke="#0055a5" strokeWidth="2" strokeDasharray="3,3" />
               
-              {/* Line: Actual Cost (Red) */}
+              {/* Line: Completed Tasks (Green) */}
               <path 
-                d={isPortfolio ? "M 40 130 Q 130 120 220 100 T 260 90" : `M 40 130 Q 130 125 220 ${130 - (110 * (costVal / budgetVal))} T 300 80`} 
+                d={isPortfolio ? "M 40 130 Q 130 115 220 95 T 310 75" : "M 40 130 Q 130 120 220 100 T 310 85"} 
                 fill="none" 
-                stroke="#e21e26" 
+                stroke="#22c55e" 
                 strokeWidth="2.5" 
                 strokeLinecap="round" 
               />
 
               {/* Node */}
-              <circle cx={isPortfolio ? "260" : "300"} cy={isPortfolio ? "90" : "80"} r="4.5" fill="#e21e26" stroke="white" strokeWidth="1.5" />
+              <circle cx="310" cy={isPortfolio ? "75" : "85"} r="4" fill="#22c55e" stroke="white" strokeWidth="1.5" />
             </svg>
           </div>
         </div>
       </div>
 
-      {/* Task Lists & Milestones */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Task Lists, Milestones & Active Risks */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left: Late Tasks List */}
         <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft">
@@ -503,7 +442,7 @@ export default function DashboardView() {
             <span>{t('lateTasks')} ({lateTasks.length})</span>
           </h3>
 
-          <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
             {lateTasks.map((t) => (
               <div key={t.id} className="p-3 bg-red-50/40 border border-red-100 rounded-xl flex items-center justify-between">
                 <div>
@@ -517,7 +456,39 @@ export default function DashboardView() {
             ))}
             {lateTasks.length === 0 && (
               <div className="text-center text-xs text-gray-400 py-6">
-                {language === 'VI' ? 'Không có công việc nào bị trễ hạn. Tuyệt vời!' : (language === 'KO' ? '지연된 작업이 없습니다. 훌륭합니다!' : 'No delayed tasks found. Good job!')}
+                {language === 'VI' ? 'Không có công việc trễ hạn nào. Tuyệt vời!' : (language === 'KO' ? '지연된 작업이 없습니다. 훌륭합니다!' : 'No delayed tasks found. Good job!')}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Center: Active Risks & Mitigations */}
+        <div className="bg-white p-5 rounded-2xl border border-cj-gray-200/60 shadow-soft">
+          <h3 className="text-xs font-bold text-cj-gray-800 uppercase tracking-wider mb-4 flex items-center">
+            <ShieldAlert className="h-4.5 w-4.5 text-cj-orange mr-1.5" />
+            <span>{language === 'VI' ? 'Rủi ro & Kế hoạch xử lý' : (language === 'KO' ? '주요 리스크 및 대응 방안' : 'Active Risks & Mitigations')}</span>
+          </h3>
+
+          <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+            {displayRisks.slice(0, 3).map((r) => (
+              <div key={r.id} className="p-3 bg-cj-gray-100/40 border border-cj-gray-200 rounded-xl space-y-1.5">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-bold text-cj-gray-800 block truncate max-w-[150px]">{r.code}</span>
+                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                    r.severity === 'High' || r.severity === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {r.severity}
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-500 leading-relaxed">{r.description}</p>
+                <p className="text-[9px] text-cj-blue bg-cj-blue/5 p-1 rounded font-medium">
+                  💡 <span className="font-bold">{language === 'VI' ? 'Gỡ rối: ' : (language === 'KO' ? '대응책: ' : 'Mitigation: ')}</span>{r.mitigation}
+                </p>
+              </div>
+            ))}
+            {displayRisks.length === 0 && (
+              <div className="text-center text-xs text-gray-400 py-6">
+                {language === 'VI' ? 'Không có rủi ro nào được phát hiện.' : (language === 'KO' ? '등록된 리스크가 없습니다.' : 'No active risks identified.')}
               </div>
             )}
           </div>
@@ -530,7 +501,7 @@ export default function DashboardView() {
             <span>{t('criticalMilestones')} ({upcomingMilestones.length})</span>
           </h3>
 
-          <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
             {upcomingMilestones.map((t) => (
               <div key={t.id} className="p-3 bg-cj-gray-100/40 border border-cj-gray-200 rounded-xl flex items-center justify-between hover:bg-cj-gray-100 transition-colors">
                 <div>
