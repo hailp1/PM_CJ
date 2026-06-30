@@ -59,7 +59,7 @@ export default function WBSView() {
   const [filterStatus, setFilterStatus] = useState('all');
 
   const activeProject = projects.find(p => p.id === activeProjectId) || projects[0];
-  const projectTasks = tasks.filter((t) => t.projectId === activeProjectId);
+  const projectTasks = React.useMemo(() => tasks.filter((t) => t.projectId === activeProjectId), [tasks, activeProjectId]);
 
   const toggleExpand = (id: string) => {
     setExpandedTasks((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -201,16 +201,18 @@ export default function WBSView() {
   // Filter and Search logic
   const isFiltered = searchQuery !== '' || filterPicId !== 'all' || filterStatus !== 'all';
 
-  const filteredTasks = projectTasks.filter((t) => {
-    const matchesSearch = searchQuery === '' ||
-      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.description.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesPic = filterPicId === 'all' || t.picId === filterPicId;
-    const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
+  const filteredTasks = React.useMemo(() => {
+    return projectTasks.filter((t) => {
+      const matchesSearch = searchQuery === '' ||
+        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.description.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesPic = filterPicId === 'all' || t.picId === filterPicId;
+      const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
 
-    return matchesSearch && matchesPic && matchesStatus;
-  });
+      return matchesSearch && matchesPic && matchesStatus;
+    });
+  }, [projectTasks, searchQuery, filterPicId, filterStatus]);
 
   const clearFilters = () => {
     setSearchQuery('');

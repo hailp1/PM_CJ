@@ -11,7 +11,7 @@ export default function GanttView() {
   const { tasks, activeProjectId } = useApp();
   const [zoom, setZoom] = useState<ZoomLevel>('Weekly');
 
-  const projectTasks = tasks.filter((t) => t.projectId === activeProjectId);
+  const projectTasks = React.useMemo(() => tasks.filter((t) => t.projectId === activeProjectId), [tasks, activeProjectId]);
 
   // Zoom configurations
   const getTimelineHeaders = () => {
